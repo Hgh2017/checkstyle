@@ -41,8 +41,8 @@ import com.puppycrawl.tools.checkstyle.utils.CheckUtil;
  * <ul>
  * <li>
  * Property {@code illegalClassNames} - Specify throw class names to reject.
- * Default value is {@code java.lang.Throwable, RuntimeException, Error, Throwable,
- * java.lang.Error, java.lang.RuntimeException}.
+ * Default value is {@code Error, RuntimeException, Throwable, java.lang.Error,
+ * java.lang.RuntimeException, java.lang.Throwable}.
  * </li>
  * <li>
  * Property {@code ignoredMethodNames} - Specify names of methods to ignore.
@@ -146,11 +146,9 @@ public final class IllegalThrowsCheck extends AbstractCheck {
         if (!isIgnorableMethod(methodDef)) {
             DetailAST token = detailAST.getFirstChild();
             while (token != null) {
-                if (token.getType() != TokenTypes.COMMA) {
-                    final FullIdent ident = FullIdent.createFullIdent(token);
-                    if (illegalClassNames.contains(ident.getText())) {
-                        log(token, MSG_KEY, ident.getText());
-                    }
+                final FullIdent ident = FullIdent.createFullIdent(token);
+                if (illegalClassNames.contains(ident.getText())) {
+                    log(token, MSG_KEY, ident.getText());
                 }
                 token = token.getNextSibling();
             }

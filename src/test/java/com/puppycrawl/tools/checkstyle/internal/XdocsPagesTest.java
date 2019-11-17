@@ -49,7 +49,9 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.apache.commons.beanutils.PropertyUtils;
 import org.junit.Assert;
@@ -61,6 +63,7 @@ import org.xml.sax.InputSource;
 
 import com.puppycrawl.tools.checkstyle.Checker;
 import com.puppycrawl.tools.checkstyle.ConfigurationLoader;
+import com.puppycrawl.tools.checkstyle.ConfigurationLoader.IgnoredModulesOptions;
 import com.puppycrawl.tools.checkstyle.ModuleFactory;
 import com.puppycrawl.tools.checkstyle.PropertiesExpander;
 import com.puppycrawl.tools.checkstyle.api.AbstractCheck;
@@ -78,6 +81,7 @@ import com.puppycrawl.tools.checkstyle.checks.blocks.LeftCurlyOption;
 import com.puppycrawl.tools.checkstyle.checks.blocks.RightCurlyOption;
 import com.puppycrawl.tools.checkstyle.checks.imports.ImportOrderOption;
 import com.puppycrawl.tools.checkstyle.checks.javadoc.AbstractJavadocCheck;
+import com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocContentLocationOption;
 import com.puppycrawl.tools.checkstyle.checks.naming.AccessModifier;
 import com.puppycrawl.tools.checkstyle.checks.whitespace.PadOption;
 import com.puppycrawl.tools.checkstyle.checks.whitespace.WrapOption;
@@ -102,10 +106,12 @@ public class XdocsPagesTest {
             "TreeWalker",
             "name=\"Checker\"",
             "name=\"Header\"",
+            "name=\"LineLength\"",
             "name=\"Translation\"",
             "name=\"SeverityMatchFilter\"",
             "name=\"SuppressWithPlainTextCommentFilter\"",
             "name=\"SuppressionFilter\"",
+            "name=\"SuppressionSingleFilter\"",
             "name=\"SuppressWarningsFilter\"",
             "name=\"BeforeExecutionExclusionFileFilter\"",
             "name=\"RegexpHeader\"",
@@ -114,6 +120,7 @@ public class XdocsPagesTest {
             "name=\"RegexpMultiline\"",
             "name=\"JavadocPackage\"",
             "name=\"NewlineAtEndOfFile\"",
+            "name=\"OrderedProperties\"",
             "name=\"UniqueProperties\"",
             "name=\"FileLength\"",
             "name=\"FileTabCharacter\""
@@ -147,7 +154,10 @@ public class XdocsPagesTest {
             "JavadocMethod.minLineCount",
             "JavadocMethod.allowMissingJavadoc",
             "JavadocMethod.allowMissingPropertyJavadoc",
-            "JavadocMethod.ignoreMethodNamesRegex"
+            "JavadocMethod.ignoreMethodNamesRegex",
+            "JavadocMethod.logLoadErrors",
+            "JavadocMethod.suppressLoadErrors",
+            "MissingDeprecated.skipNoJavadoc"
     );
 
     private static final Set<String> SUN_MODULES = Collections.unmodifiableSet(
@@ -296,10 +306,10 @@ public class XdocsPagesTest {
                 final String unserializedSource = sources.item(position).getTextContent()
                         .replace("...", "").trim();
 
-                if (unserializedSource.charAt(0) != '<'
+                if (unserializedSource.length() > 1 && (unserializedSource.charAt(0) != '<'
                         || unserializedSource.charAt(unserializedSource.length() - 1) != '>'
                         // no dtd testing yet
-                        || unserializedSource.contains("<!")) {
+                        || unserializedSource.contains("<!"))) {
                     continue;
                 }
 
@@ -372,7 +382,7 @@ public class XdocsPagesTest {
 
                 final PropertiesExpander expander = new PropertiesExpander(properties);
                 final Configuration config = ConfigurationLoader.loadConfiguration(new InputSource(
-                        new StringReader(code)), expander, false);
+                        new StringReader(code)), expander, IgnoredModulesOptions.EXECUTE);
                 final Checker checker = new Checker();
 
                 try {
@@ -497,8 +507,8 @@ public class XdocsPagesTest {
                 validatePropertySection(fileName, sectionName, null, instance);
                 subSectionPos++;
             }
-            if (subSectionPos == 4 && !"Error Messages".equals(subSectionName)) {
-                validateErrorSection(fileName, sectionName, null, instance);
+            if (subSectionPos == 4 && !"Violation Messages".equals(subSectionName)) {
+                validateViolationSection(fileName, sectionName, null, instance);
                 subSectionPos++;
             }
 
@@ -507,18 +517,14 @@ public class XdocsPagesTest {
                     subSectionName);
 
             switch (subSectionPos) {
-                case 0:
-                    break;
                 case 1:
                     validatePropertySection(fileName, sectionName, subSection, instance);
-                    break;
-                case 2:
                     break;
                 case 3:
                     validateUsageExample(fileName, sectionName, subSection);
                     break;
                 case 4:
-                    validateErrorSection(fileName, sectionName, subSection, instance);
+                    validateViolationSection(fileName, sectionName, subSection, instance);
                     break;
                 case 5:
                     validatePackageSection(fileName, sectionName, subSection, instance);
@@ -526,6 +532,8 @@ public class XdocsPagesTest {
                 case 6:
                     validateParentSection(fileName, sectionName, subSection);
                     break;
+                case 0:
+                case 2:
                 default:
                     break;
             }
@@ -568,7 +576,7 @@ public class XdocsPagesTest {
                 result = "Example of Usage";
                 break;
             case 4:
-                result = "Error Messages";
+                result = "Violation Messages";
                 break;
             case 5:
                 result = "Package";
@@ -595,7 +603,17 @@ public class XdocsPagesTest {
             Assert.assertTrue(fileName + " section '" + sectionName
                     + "' should have no properties to show", !properties.isEmpty());
 
-            validatePropertySectionProperties(fileName, sectionName, subSection, instance,
+            final Set<Node> nodes = XmlUtil.getChildrenElements(subSection);
+            Assert.assertEquals(fileName + " section '" + sectionName
+                    + "' subsection 'Properties' should have one child node",
+                1, nodes.size());
+
+            final Node table = nodes.iterator().next();
+            Assert.assertEquals(fileName + " section '" + sectionName
+                    + "' subsection 'Properties' has unexpected child node",
+                "table", table.getNodeName());
+
+            validatePropertySectionProperties(fileName, sectionName, table, instance,
                     properties);
         }
 
@@ -663,12 +681,12 @@ public class XdocsPagesTest {
     }
 
     private static void validatePropertySectionProperties(String fileName, String sectionName,
-            Node subSection, Object instance, Set<String> properties) throws Exception {
+            Node table, Object instance, Set<String> properties) throws Exception {
         boolean skip = true;
         boolean didJavadocTokens = false;
         boolean didTokens = false;
 
-        for (Node row : XmlUtil.getChildrenElements(XmlUtil.getFirstChildElement(subSection))) {
+        for (Node row : XmlUtil.getChildrenElements(table)) {
             final List<Node> columns = new ArrayList<>(XmlUtil.getChildrenElements(row));
 
             Assert.assertEquals(fileName + " section '" + sectionName
@@ -822,6 +840,7 @@ public class XdocsPagesTest {
                 || "SuppressWithPlainTextCommentFilter".equals(sectionName))
                     && ("checkFormat".equals(propertyName)
                         || "messageFormat".equals(propertyName)
+                        || "idFormat".equals(propertyName)
                         || "influenceFormat".equals(propertyName))
                 || ("RegexpMultiline".equals(sectionName)
                     || "RegexpSingleline".equals(sectionName)
@@ -920,6 +939,9 @@ public class XdocsPagesTest {
         }
         else if (fieldClass == AccessModifier[].class) {
             result = "Access Modifier Set";
+        }
+        else if (fieldClass == JavadocContentLocationOption.class) {
+            result = "Javadoc Content Location";
         }
         else if ("PropertyCacheFile".equals(fieldClass.getSimpleName())) {
             result = "File";
@@ -1039,10 +1061,9 @@ public class XdocsPagesTest {
                 }
                 else {
                     result = Arrays.toString((int[]) value).replace("[", "").replace("]", "");
-
-                    if (result.isEmpty()) {
-                        result = "{}";
-                    }
+                }
+                if (result.isEmpty()) {
+                    result = "{}";
                 }
             }
             else if (fieldClass == double[].class) {
@@ -1053,38 +1074,23 @@ public class XdocsPagesTest {
                 }
             }
             else if (fieldClass == String[].class) {
-                if (value instanceof Collection) {
-                    final Collection<?> collection = (Collection<?>) value;
-                    final String[] newArray = new String[collection.size()];
-                    final Iterator<?> iterator = collection.iterator();
-                    int index = 0;
-
-                    while (iterator.hasNext()) {
-                        final Object next = iterator.next();
-                        newArray[index] = (String) next;
-                        index++;
-                    }
-
-                    value = newArray;
-                }
-
-                if (value != null && Array.getLength(value) > 0) {
-                    if (Array.get(value, 0) instanceof Number) {
-                        final String[] newArray = new String[Array.getLength(value)];
-
-                        for (int i = 0; i < newArray.length; i++) {
-                            newArray[i] = TokenUtil.getTokenName(((Number) Array.get(value, i))
-                                    .intValue());
-                        }
-
-                        value = newArray;
-                    }
-
-                    result = Arrays.toString((Object[]) value).replace("[", "")
-                            .replace("]", "");
+                if (value == null) {
+                    result = "";
                 }
                 else {
-                    result = "";
+                    final Stream<?> valuesStream;
+                    if (value instanceof Collection) {
+                        final Collection<?> collection = (Collection<?>) value;
+                        valuesStream = collection.stream();
+                    }
+                    else {
+                        final Object[] array = (Object[]) value;
+                        valuesStream = Arrays.stream(array);
+                    }
+                    result = valuesStream
+                        .map(String.class::cast)
+                        .sorted()
+                        .collect(Collectors.joining(", "));
                 }
 
                 if (result.isEmpty()) {
@@ -1240,8 +1246,9 @@ public class XdocsPagesTest {
         return result;
     }
 
-    private static void validateErrorSection(String fileName, String sectionName, Node subSection,
-            Object instance) throws Exception {
+    private static void validateViolationSection(String fileName, String sectionName,
+                                                 Node subSection,
+                                                 Object instance) throws Exception {
         final Class<?> clss = instance.getClass();
         final Set<Field> fields = CheckUtil.getCheckMessages(clss);
         final Set<String> list = new TreeSet<>();

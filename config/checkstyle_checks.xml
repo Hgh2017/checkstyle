@@ -36,6 +36,15 @@
   <module name="SuppressionFilter">
     <property name="file" value="${checkstyle.suppressions.file}"/>
   </module>
+  <!-- Tone down the checking for test code -->
+  <module name="SuppressionSingleFilter">
+    <property name="checks" value="JavadocPackage"/>
+    <property name="files" value=".*[\\/]src[\\/](test|it)[\\/]"/>
+  </module>
+  <module name="SuppressionSingleFilter">
+    <property name="checks" value="JavadocMethod"/>
+    <property name="files" value=".*[\\/]src[\\/](test|it)[\\/].*(?&lt;!Support)\.java"/>
+  </module>
   <module name="SuppressWarningsFilter"/>
   <module name="SuppressWithPlainTextCommentFilter">
     <!--
@@ -69,6 +78,7 @@
     <property name="requiredTranslations" value="de, fr, fi, es, pt, ja, tr, zh"/>
   </module>
   <module name="UniqueProperties"/>
+  <module name="OrderedProperties" />
 
   <!-- Regexp -->
   <module name="RegexpMultiline"/>
@@ -100,9 +110,21 @@
     <property name="message" value="Line should not be longer than 100 symbols"/>
   </module>
   <module name="RegexpSingleline">
-    <property name="format" value="^(?!(.*href=&quot;|.*http)).{101,}$"/>
+    <property name="format" value="^(?!(\s*&lt;a href=&quot;[^&quot;]+&quot;&gt;|.*http)).{101,}$"/>
     <property name="fileExtensions" value="xml, vm"/>
     <property name="message" value="Line should not be longer than 100 symbols"/>
+  </module>
+  <module name="RegexpSingleline">
+    <property name="id" value="noSourceforgeNetLinks"/>
+    <property name="format" value="checkstyle\.sourceforge\.net"/>
+    <property name="message"
+              value="Old site links should not be used, please use https://checkstyle.org"/>
+  </module>
+  <module name="RegexpSingleline">
+    <property name="id" value="noSourceforgeIoLinks"/>
+    <property name="format" value="checkstyle\.sourceforge\.io"/>
+    <property name="message"
+              value="Old site links should not be used, please use https://checkstyle.org"/>
   </module>
   <module name="RegexpOnFilename" />
   <module name="RegexpOnFilename">
@@ -132,6 +154,11 @@
   <module name="FileLength">
     <property name="fileExtensions" value="java"/>
   </module>
+  <module name="LineLength">
+    <property name="fileExtensions" value="java"/>
+    <property name="max" value="100"/>
+    <property name="ignorePattern" value="^ *\* *([^ ]+|\{@code .*|&lt;a href=&quot;[^&quot;]+&quot;&gt;)$"/>
+  </module>
 
   <!-- Whitespace -->
   <module name="FileTabCharacter">
@@ -147,11 +174,8 @@
       <property name="tokens" value="ANNOTATION_FIELD_DEF"/>
       <property name="tokens" value="PACKAGE_DEF"/>
       <property name="tokens" value="ENUM_CONSTANT_DEF"/>
+      <property name="tokens" value="VARIABLE_DEF"/>
       <property name="allowSamelineSingleParameterlessAnnotation" value="false"/>
-    </module>
-    <module name="AnnotationLocation">
-      <property name="tokens" value="PARAMETER_DEF"/>
-      <property name="allowSamelineMultipleAnnotations" value="true"/>
     </module>
     <module name="AnnotationOnSameLine">
       <!-- we can not use it as it conflicts with AnnotationLocation -->
@@ -342,6 +366,9 @@
     <module name="SuperClone"/>
     <module name="SuperFinalize"/>
     <module name="UnnecessaryParentheses"/>
+    <module name="UnnecessarySemicolonAfterTypeMemberDeclaration"/>
+    <module name="UnnecessarySemicolonInEnumeration"/>
+    <module name="UnnecessarySemicolonInTryWithResources"/>
     <module name="VariableDeclarationUsageDistance"/>
 
     <!-- Filters-->
@@ -435,6 +462,16 @@
 
     <!-- Javadoc Comments -->
     <module name="AtclauseOrder"/>
+    <module name="InvalidJavadocPosition"/>
+    <module name="JavadocBlockTagLocation">
+      <!-- default tags -->
+      <property name="tags" value="author, deprecated, exception, hidden, param, provides"/>
+      <property name="tags" value="return, see, serial, serialData, serialField, since, throws"/>
+      <property name="tags" value="uses, version"/>
+      <!-- additional tags used in the project -->
+      <property name="tags" value="noinspection"/>
+    </module>
+    <module name="JavadocContentLocation"/>
     <module name="JavadocMethod">
       <property name="allowUndeclaredRTE" value="true"/>
       <property name="allowThrowsTagsForSubclasses" value="true"/>
@@ -453,6 +490,7 @@
     <module name="MissingJavadocMethod">
       <property name="allowMissingPropertyJavadoc" value="true"/>
     </module>
+    <module name="MissingJavadocPackage"/>
     <module name="MissingJavadocType"/>
     <module name="NonEmptyAtclauseDescription"/>
     <module name="SingleLineJavadoc"/>
@@ -594,10 +632,6 @@
     <module name="AnonInnerLength"/>
     <module name="ExecutableStatementCount">
         <property name="max" value="30"/>
-    </module>
-    <module name="LineLength">
-      <property name="max" value="100"/>
-      <property name="ignorePattern" value="^ *\* *([^ ]+|\{@code .*|&lt;a href.*)$"/>
     </module>
     <module name="MethodCount">
       <property name="maxTotal" value="34"/>

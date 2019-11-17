@@ -27,7 +27,6 @@ import org.junit.Test;
 
 import com.puppycrawl.tools.checkstyle.AbstractModuleTestSupport;
 import com.puppycrawl.tools.checkstyle.DefaultConfiguration;
-import com.puppycrawl.tools.checkstyle.utils.CommonUtil;
 
 public class EqualsAvoidNullCheckTest extends AbstractModuleTestSupport {
 
@@ -162,6 +161,7 @@ public class EqualsAvoidNullCheckTest extends AbstractModuleTestSupport {
 
         final String[] expected = {
             "7:28: " + getCheckMessage(MSG_EQUALS_AVOID_NULL),
+            "14:17: " + getCheckMessage(MSG_EQUALS_AVOID_NULL),
         };
         verify(checkConfig, getPath("InputEqualsAvoidNullOnTheSameLine.java"), expected);
     }
@@ -189,7 +189,9 @@ public class EqualsAvoidNullCheckTest extends AbstractModuleTestSupport {
         final DefaultConfiguration checkConfig =
                 createModuleConfig(EqualsAvoidNullCheck.class);
 
-        final String[] expected = CommonUtil.EMPTY_STRING_ARRAY;
+        final String[] expected = {
+            "13:17: " + getCheckMessage(MSG_EQUALS_AVOID_NULL),
+        };
         verify(checkConfig, getPath("InputEqualsAvoidNullMisc.java"), expected);
     }
 

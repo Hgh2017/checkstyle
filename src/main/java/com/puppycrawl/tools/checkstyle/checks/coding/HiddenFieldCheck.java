@@ -187,7 +187,8 @@ public class HiddenFieldCheck
      */
     public static final String MSG_KEY = "hidden.field";
 
-    /** Stack of sets of field names,
+    /**
+     * Stack of sets of field names,
      * one for each class of a set of nested classes.
      */
     private FieldFrame frame;
@@ -274,10 +275,6 @@ public class HiddenFieldCheck
                 || isInstanceField(firstChild, untypedLambdaParameterName)) {
                 log(firstChild, MSG_KEY, untypedLambdaParameterName);
             }
-        }
-        else {
-            // Type of lambda parameter is not omitted.
-            processVariable(ast);
         }
     }
 

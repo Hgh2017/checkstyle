@@ -19,17 +19,23 @@
 
 package com.puppycrawl.tools.checkstyle.checks.javadoc;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.puppycrawl.tools.checkstyle.FileStatefulCheck;
+import com.puppycrawl.tools.checkstyle.api.AbstractCheck;
 import com.puppycrawl.tools.checkstyle.api.DetailAST;
 import com.puppycrawl.tools.checkstyle.api.FileContents;
 import com.puppycrawl.tools.checkstyle.api.FullIdent;
@@ -42,12 +48,166 @@ import com.puppycrawl.tools.checkstyle.utils.CommonUtil;
 import com.puppycrawl.tools.checkstyle.utils.ScopeUtil;
 
 /**
- * Checks the Javadoc of a method or constructor.
+ * <p>
+ * Checks the Javadoc of a method or constructor. By default,
+ * check does not validate methods and constructors for unused throws.
+ * To allow documented exceptions derived from {@code java.lang.RuntimeException}
+ * that are not declared, set property {@code allowUndeclaredRTE} to true.
+ * The scope to verify is specified using the {@code Scope} class and defaults
+ * to {@code Scope.PRIVATE}. To verify another scope, set property scope to
+ * a different <a href="https://checkstyle.org/property_types.html#scope">scope</a>.
+ * </p>
+ * <p>
+ * Violates parameters and type parameters for which no param tags are present
+ * can be suppressed by defining property {@code allowMissingParamTags}.
+ * Violates exceptions which are declared to be thrown, but for which no throws
+ * tag is present can be suppressed by defining property {@code allowMissingThrowsTags}.
+ * Violates methods which return non-void but for which no return tag is present
+ * can be suppressed by defining property {@code allowMissingReturnTag}.
+ * </p>
+ * <p>
+ * Javadoc is not required on a method that is tagged with the {@code @Override}
+ * annotation. However under Java 5 it is not possible to mark a method required
+ * for an interface (this was <i>corrected</i> under Java 6). Hence Checkstyle
+ * supports using the convention of using a single {@code {@inheritDoc}} tag
+ * instead of all the other tags.
+ * </p>
+ * <p>
+ * Note that only inheritable items will allow the {@code {@inheritDoc}}
+ * tag to be used in place of comments. Static methods at all visibilities,
+ * private non-static methods and constructors are not inheritable.
+ * </p>
+ * <p>
+ * For example, if the following method is implementing a method required by
+ * an interface, then the Javadoc could be done as:
+ * </p>
+ * <pre>
+ * &#47;** {&#64;inheritDoc} *&#47;
+ * public int checkReturnTag(final int aTagIndex,
+ *                           JavadocTag[] aTags,
+ *                           int aLineNo)
+ * </pre>
+ * <p>
+ * The classpath may need to be configured to locate the class information.
+ * The classpath configuration is dependent on the mechanism used to invoke Checkstyle.
+ * </p>
+ * <ul>
+ * <li>
+ * Property {@code allowedAnnotations} - Specify the list of annotations
+ * that allow missed documentation.
+ * Default value is {@code Override}.
+ * </li>
+ * <li>
+ * Property {@code validateThrows} - Control whether to validate {@code throws} tags.
+ * Default value is {@code false}.
+ * </li>
+ * <li>
+ * Property {@code scope} - Specify the visibility scope where Javadoc comments are checked.
+ * Default value is {@code private}.
+ * </li>
+ * <li>
+ * Property {@code excludeScope} - Specify the visibility scope where Javadoc comments
+ * are not checked.
+ * Default value is {@code null}.
+ * </li>
+ * <li>
+ * Property {@code allowUndeclaredRTE} - Control whether to allow documented exceptions
+ * that are not declared if they are a subclass of {@code java.lang.RuntimeException}.
+ * Default value is {@code false}.
+ * </li>
+ * <li>
+ * Property {@code allowThrowsTagsForSubclasses} - Control whether to allow
+ * documented exceptions that are subclass of one of declared exception.
+ * Default value is {@code false}.
+ * </li>
+ * <li>
+ * Property {@code allowMissingParamTags} - Control whether to ignore violations
+ * when a method has parameters but does not have matching {@code param} tags in the javadoc.
+ * Default value is {@code false}.
+ * </li>
+ * <li>
+ * Property {@code allowMissingThrowsTags} - Control whether to ignore violations
+ * when a method declares that it throws exceptions but does not have matching
+ * {@code throws} tags in the javadoc.
+ * Default value is {@code false}.
+ * </li>
+ * <li>
+ * Property {@code allowMissingReturnTag} - Control whether to ignore violations
+ * when a method returns non-void type and does not have a {@code return} tag in the javadoc.
+ * Default value is {@code false}.
+ * </li>
+ * <li>
+ * Property {@code logLoadErrors} - Control checkstyle's error handling when
+ * a class loading fails. This check may need to load exception classes mentioned
+ * in the {@code @throws} tag to check whether they are RuntimeExceptions.
+ * If set to {@code false} a classpath configuration problem is assumed and
+ * the TreeWalker stops operating on the class completely. If set to {@code true}
+ * (the default), checkstyle assumes a typo or refactoring problem in the javadoc
+ * and logs the problem in the normal checkstyle report (potentially masking
+ * a configuration error).
+ * Default value is {@code true}.
+ * </li>
+ * <li>
+ * Property {@code suppressLoadErrors} - Control whether to suppress violations
+ * when a class loading fails. When logLoadErrors is set to true, the TreeWalker
+ * completely processes a class and displays any problems with loading exceptions
+ * as checkstyle violations. When this property is set to true, the violations
+ * generated when logLoadErrors is set true are suppressed from being reported as
+ * violations in the checkstyle report.
+ * Default value is {@code false}.
+ * </li>
+ * <li>
+ * Property {@code tokens} - tokens to check Default value is:
+ * <a href="https://checkstyle.org/apidocs/com/puppycrawl/tools/checkstyle/api/TokenTypes.html#METHOD_DEF">
+ * METHOD_DEF</a>,
+ * <a href="https://checkstyle.org/apidocs/com/puppycrawl/tools/checkstyle/api/TokenTypes.html#CTOR_DEF">
+ * CTOR_DEF</a>,
+ * <a href="https://checkstyle.org/apidocs/com/puppycrawl/tools/checkstyle/api/TokenTypes.html#ANNOTATION_FIELD_DEF">
+ * ANNOTATION_FIELD_DEF</a>.
+ * </li>
+ * </ul>
+ * <p>
+ * To configure the default check:
+ * </p>
+ * <pre>
+ * &lt;module name="JavadocMethod"/&gt;
+ * </pre>
+ * <p>
+ * To configure the check for {@code public} scope and to allow documentation
+ * of undeclared RuntimeExceptions:
+ * </p>
+ * <pre>
+ * &lt;module name="JavadocMethod"&gt;
+ *   &lt;property name="scope" value="public"/&gt;
+ *   &lt;property name="allowUndeclaredRTE" value="true"/&gt;
+ * &lt;/module&gt;
+ * </pre>
+ * <p>
+ * To configure the check for for {@code public} scope, to allow documentation
+ * of undeclared RuntimeExceptions, while ignoring any missing param tags is:
+ * </p>
+ * <pre>
+ * &lt;module name="JavadocMethod"&gt;
+ *   &lt;property name="scope" value="public"/&gt;
+ *   &lt;property name="allowUndeclaredRTE" value="true"/&gt;
+ *   &lt;property name="allowMissingParamTags" value="true"/&gt;
+ * &lt;/module&gt;
+ * </pre>
+ * <p>
+ * To configure the check for methods which are in {@code private},
+ * but not in {@code protected} scope:
+ * </p>
+ * <pre>
+ * &lt;module name="JavadocMethod"&gt;
+ *   &lt;property name="scope" value="private"/&gt;
+ *   &lt;property name="excludeScope" value="protected"/&gt;
+ * &lt;/module&gt;
+ * </pre>
  *
- *
- * @noinspection deprecation
+ * @since 3.0
  */
-public class JavadocMethodCheck extends AbstractTypeAwareCheck {
+@FileStatefulCheck
+public class JavadocMethodCheck extends AbstractCheck {
 
     /**
      * A key is pointing to the warning message text in "messages.properties"
@@ -94,14 +254,14 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
     /** Compiled regexp to match Javadoc tags that take an argument. */
     private static final Pattern MATCH_JAVADOC_ARG = CommonUtil.createPattern(
             "^\\s*(?>\\*|\\/\\*\\*)?\\s*@(throws|exception|param)\\s+(\\S+)\\s+\\S*");
-
-    /** Compiled regexp to match first part of multilineJavadoc tags. */
-    private static final Pattern MATCH_JAVADOC_ARG_MULTILINE_START = CommonUtil.createPattern(
-            "^\\s*(?>\\*|\\/\\*\\*)?\\s*@(throws|exception|param)\\s+(\\S+)\\s*$");
+    /** Compiled regexp to match Javadoc tags with argument but with missing description. */
+    private static final Pattern MATCH_JAVADOC_ARG_MISSING_DESCRIPTION =
+        CommonUtil.createPattern("^\\s*(?>\\*|\\/\\*\\*)?\\s*@(throws|exception|param)\\s+"
+            + "(\\S[^*]*)(?:(\\s+|\\*\\/))?");
 
     /** Compiled regexp to look for a continuation of the comment. */
     private static final Pattern MATCH_JAVADOC_MULTILINE_CONT =
-            CommonUtil.createPattern("(\\*/|@|[^\\s\\*])");
+            CommonUtil.createPattern("(\\*\\/|@|[^\\s\\*])");
 
     /** Multiline finished at end of comment. */
     private static final String END_JAVADOC = "*/";
@@ -118,75 +278,70 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
     private static final Pattern MATCH_JAVADOC_NOARG_CURLY =
             CommonUtil.createPattern("\\{\\s*@(inheritDoc)\\s*\\}");
 
-    /** The visibility scope where Javadoc comments are checked. */
+    /** Stack of maps for type params. */
+    private final Deque<Map<String, AbstractClassInfo>> currentTypeParams = new ArrayDeque<>();
+
+    /** Imports details. **/
+    private final Set<String> imports = new HashSet<>();
+
+    /** Full identifier for package of the method. **/
+    private FullIdent packageFullIdent;
+
+    /** Name of current class. */
+    private String currentClassName;
+
+    /** {@code ClassResolver} instance for current tree. */
+    private ClassResolver classResolver;
+
+    /** Specify the visibility scope where Javadoc comments are checked. */
     private Scope scope = Scope.PRIVATE;
 
-    /** The visibility scope where Javadoc comments shouldn't be checked. */
+    /** Specify the visibility scope where Javadoc comments are not checked. */
     private Scope excludeScope;
 
     /**
-     * Controls whether to allow documented exceptions that are not declared if
-     * they are a subclass of java.lang.RuntimeException.
+     * Control whether to allow documented exceptions that are not declared if
+     * they are a subclass of {@code java.lang.RuntimeException}.
      */
     // -@cs[AbbreviationAsWordInName] We can not change it as,
     // check's property is part of API (used in configurations).
     private boolean allowUndeclaredRTE;
 
     /**
-     * Allows validating throws tags.
+     * Control whether to validate {@code throws} tags.
      */
     private boolean validateThrows;
 
     /**
-     * Controls whether to allow documented exceptions that are subclass of one
-     * of declared exception. Defaults to false (backward compatibility).
+     * Control whether to allow documented exceptions that are subclass of one
+     * of declared exception.
      */
     private boolean allowThrowsTagsForSubclasses;
 
     /**
-     * Controls whether to ignore errors when a method has parameters but does
-     * not have matching param tags in the javadoc. Defaults to false.
+     * Control whether to ignore violations when a method has parameters but does
+     * not have matching {@code param} tags in the javadoc.
      */
     private boolean allowMissingParamTags;
 
     /**
-     * Controls whether to ignore errors when a method declares that it throws
-     * exceptions but does not have matching throws tags in the javadoc.
-     * Defaults to false.
+     * Control whether to ignore violations when a method declares that it throws
+     * exceptions but does not have matching {@code throws} tags in the javadoc.
      */
     private boolean allowMissingThrowsTags;
 
     /**
-     * Controls whether to ignore errors when a method returns non-void type
-     * but does not have a return tag in the javadoc. Defaults to false.
+     * Control whether to ignore violations when a method returns non-void type
+     * and does not have a {@code return} tag in the javadoc.
      */
     private boolean allowMissingReturnTag;
 
-    /** List of annotations that allow missed documentation. */
+    /** Specify the list of annotations that allow missed documentation. */
     private List<String> allowedAnnotations = Collections.singletonList("Override");
 
     /**
-     * Set regex for matching method names to ignore.
-     * @param pattern a pattern.
-     * @deprecated Use {@link MissingJavadocMethodCheck} instead.
-     */
-    @Deprecated
-    public void setIgnoreMethodNamesRegex(Pattern pattern) {
-        // deprecated
-    }
-
-    /**
-     * Sets minimal amount of lines in method to allow no documentation.
-     * @param value user's value.
-     * @deprecated Use {@link MissingJavadocMethodCheck} instead.
-     */
-    @Deprecated
-    public void setMinLineCount(int value) {
-        // deprecated
-    }
-
-    /**
-     * Allow validating throws tag.
+     * Setter to control whether to validate {@code throws} tags.
+     *
      * @param value user's value.
      */
     public void setValidateThrows(boolean value) {
@@ -194,7 +349,8 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
     }
 
     /**
-     * Sets list of annotations.
+     * Setter to specify the list of annotations that allow missed documentation.
+     *
      * @param userAnnotations user's value.
      */
     public void setAllowedAnnotations(String... userAnnotations) {
@@ -202,7 +358,7 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
     }
 
     /**
-     * Set the scope.
+     * Setter to specify the visibility scope where Javadoc comments are checked.
      *
      * @param scope a scope.
      */
@@ -211,7 +367,7 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
     }
 
     /**
-     * Set the excludeScope.
+     * Setter to specify the visibility scope where Javadoc comments are not checked.
      *
      * @param excludeScope a scope.
      */
@@ -220,8 +376,8 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
     }
 
     /**
-     * Controls whether to allow documented exceptions that are not declared if
-     * they are a subclass of java.lang.RuntimeException.
+     * Setter to control whether to allow documented exceptions that are not declared if
+     * they are a subclass of {@code java.lang.RuntimeException}.
      *
      * @param flag a {@code Boolean} value
      */
@@ -232,8 +388,8 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
     }
 
     /**
-     * Controls whether to allow documented exception that are subclass of one
-     * of declared exceptions.
+     * Setter to control whether to allow documented exceptions that are subclass of one
+     * of declared exception.
      *
      * @param flag a {@code Boolean} value
      */
@@ -242,8 +398,8 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
     }
 
     /**
-     * Controls whether to allow a method which has parameters to omit matching
-     * param tags in the javadoc. Defaults to false.
+     * Setter to control whether to ignore violations when a method has parameters
+     * but does not have matching {@code param} tags in the javadoc.
      *
      * @param flag a {@code Boolean} value
      */
@@ -252,9 +408,8 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
     }
 
     /**
-     * Controls whether to allow a method which declares that it throws
-     * exceptions to omit matching throws tags in the javadoc. Defaults to
-     * false.
+     * Setter to control whether to ignore violations when a method declares that it throws
+     * exceptions but does not have matching {@code throws} tags in the javadoc.
      *
      * @param flag a {@code Boolean} value
      */
@@ -263,8 +418,8 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
     }
 
     /**
-     * Controls whether to allow a method which returns non-void type to omit
-     * the return tag in the javadoc. Defaults to false.
+     * Setter to control whether to ignore violations when a method returns non-void type
+     * and does not have a {@code return} tag in the javadoc.
      *
      * @param flag a {@code Boolean} value
      */
@@ -273,27 +428,46 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
     }
 
     /**
-     * Controls whether to ignore errors when there is no javadoc. Defaults to
-     * false.
+     * Setter to control checkstyle's error handling when a class loading fails.
+     * This check may need to load exception classes mentioned in the {@code @throws}
+     * tag to check whether they are RuntimeExceptions. If set to {@code false}
+     * a classpath configuration problem is assumed and the TreeWalker stops operating
+     * on the class completely. If set to {@code true}(the default), checkstyle assumes
+     * a typo or refactoring problem in the javadoc and logs the problem in the normal
+     * checkstyle report (potentially masking a configuration error).
      *
-     * @param flag a {@code Boolean} value
-     * @deprecated Use {@link MissingJavadocMethodCheck} instead.
+     * @param logLoadErrors true if errors should be logged
+     * @deprecated No substitute.
      */
     @Deprecated
-    public void setAllowMissingJavadoc(boolean flag) {
-        // deprecated
+    public final void setLogLoadErrors(boolean logLoadErrors) {
+        // no code
     }
 
     /**
-     * Controls whether to ignore errors when there is no javadoc for a
-     * property accessor (setter/getter methods). Defaults to false.
+     * Setter to control whether to suppress violations when a class loading fails.
+     * When logLoadErrors is set to true, the TreeWalker completely processes
+     * a class and displays any problems with loading exceptions as checkstyle violations.
+     * When this property is set to true, the violations generated when logLoadErrors
+     * is set true are suppressed from being reported as violations in the checkstyle report.
      *
-     * @param flag a {@code Boolean} value
-     * @deprecated Use {@link MissingJavadocMethodCheck} instead.
+     * @param suppressLoadErrors true if errors shouldn't be shown
+     * @deprecated No substitute.
      */
     @Deprecated
-    public void setAllowMissingPropertyJavadoc(final boolean flag) {
-        // deprecated
+    public final void setSuppressLoadErrors(boolean suppressLoadErrors) {
+        // no code
+    }
+
+    @Override
+    public final int[] getRequiredTokens() {
+        return new int[] {
+            TokenTypes.PACKAGE_DEF,
+            TokenTypes.IMPORT,
+            TokenTypes.CLASS_DEF,
+            TokenTypes.INTERFACE_DEF,
+            TokenTypes.ENUM_DEF,
+        };
     }
 
     @Override
@@ -316,7 +490,68 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
     }
 
     @Override
-    protected final void processAST(DetailAST ast) {
+    public void beginTree(DetailAST rootAST) {
+        packageFullIdent = FullIdent.createFullIdent(null);
+        imports.clear();
+        // add java.lang.* since it's always imported
+        imports.add("java.lang.*");
+        classResolver = null;
+        currentClassName = "";
+        currentTypeParams.clear();
+    }
+
+    @Override
+    public final void visitToken(DetailAST ast) {
+        if (ast.getType() == TokenTypes.PACKAGE_DEF) {
+            processPackage(ast);
+        }
+        else if (ast.getType() == TokenTypes.IMPORT) {
+            processImport(ast);
+        }
+        else if (ast.getType() == TokenTypes.CLASS_DEF
+                 || ast.getType() == TokenTypes.INTERFACE_DEF
+                 || ast.getType() == TokenTypes.ENUM_DEF) {
+            processClass(ast);
+        }
+        else {
+            if (ast.getType() == TokenTypes.METHOD_DEF) {
+                processTypeParams(ast);
+            }
+            processAST(ast);
+        }
+    }
+
+    @Override
+    public final void leaveToken(DetailAST ast) {
+        if (ast.getType() == TokenTypes.CLASS_DEF
+            || ast.getType() == TokenTypes.INTERFACE_DEF
+            || ast.getType() == TokenTypes.ENUM_DEF) {
+            // perhaps it was inner class
+            int dotIdx = currentClassName.lastIndexOf('$');
+            if (dotIdx == -1) {
+                // perhaps just a class
+                dotIdx = currentClassName.lastIndexOf('.');
+            }
+            if (dotIdx == -1) {
+                // looks like a topmost class
+                currentClassName = "";
+            }
+            else {
+                currentClassName = currentClassName.substring(0, dotIdx);
+            }
+            currentTypeParams.pop();
+        }
+        else if (ast.getType() == TokenTypes.METHOD_DEF) {
+            currentTypeParams.pop();
+        }
+    }
+
+    /**
+     * Called to process an AST when visiting it.
+     * @param ast the AST to process. Guaranteed to not be PACKAGE_DEF or
+     *             IMPORT tokens.
+     */
+    private void processAST(DetailAST ast) {
         final Scope theScope = calculateScope(ast);
         if (shouldCheck(ast, theScope)) {
             final FileContents contents = getFileContents();
@@ -326,13 +561,6 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
                 checkComment(ast, textBlock);
             }
         }
-    }
-
-    @Override
-    protected final void logLoadError(Token ident) {
-        logLoadErrorImpl(ident.getLineNo(), ident.getColumnNo(),
-            MSG_CLASS_INFO,
-            JavadocTagInfo.THROWS.getText(), ident.getText());
     }
 
     /**
@@ -390,7 +618,7 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
 
     /**
      * Validates whether the Javadoc has a short circuit tag. Currently this is
-     * the inheritTag. Any errors are logged.
+     * the inheritTag. Any violations are logged.
      *
      * @param ast the construct being checked
      * @param tags the list of Javadoc tags associated with the construct
@@ -450,12 +678,12 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
             currentLine++;
             final Matcher javadocArgMatcher =
                 MATCH_JAVADOC_ARG.matcher(lines[i]);
+            final Matcher javadocArgMissingDescriptionMatcher =
+                MATCH_JAVADOC_ARG_MISSING_DESCRIPTION.matcher(lines[i]);
             final Matcher javadocNoargMatcher =
                 MATCH_JAVADOC_NOARG.matcher(lines[i]);
             final Matcher noargCurlyMatcher =
                 MATCH_JAVADOC_NOARG_CURLY.matcher(lines[i]);
-            final Matcher argMultilineStart =
-                MATCH_JAVADOC_ARG_MULTILINE_START.matcher(lines[i]);
             final Matcher noargMultilineStart =
                 MATCH_JAVADOC_NOARG_MULTILINE_START.matcher(lines[i]);
 
@@ -464,6 +692,13 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
                 tags.add(new JavadocTag(currentLine, col, javadocArgMatcher.group(1),
                         javadocArgMatcher.group(2)));
             }
+            else if (javadocArgMissingDescriptionMatcher.find()) {
+                final int col = calculateTagColumn(javadocArgMissingDescriptionMatcher, i,
+                    startColumnNumber);
+                tags.add(new JavadocTag(currentLine, col,
+                    javadocArgMissingDescriptionMatcher.group(1),
+                    javadocArgMissingDescriptionMatcher.group(2)));
+            }
             else if (javadocNoargMatcher.find()) {
                 final int col = calculateTagColumn(javadocNoargMatcher, i, startColumnNumber);
                 tags.add(new JavadocTag(currentLine, col, javadocNoargMatcher.group(1)));
@@ -471,10 +706,6 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
             else if (noargCurlyMatcher.find()) {
                 final int col = calculateTagColumn(noargCurlyMatcher, i, startColumnNumber);
                 tags.add(new JavadocTag(currentLine, col, noargCurlyMatcher.group(1)));
-            }
-            else if (argMultilineStart.find()) {
-                final int col = calculateTagColumn(argMultilineStart, i, startColumnNumber);
-                tags.addAll(getMultilineArgTags(argMultilineStart, col, lines, i, currentLine));
             }
             else if (noargMultilineStart.find()) {
                 tags.addAll(getMultilineNoArgTags(noargMultilineStart, lines, i, currentLine));
@@ -497,35 +728,6 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
             col += startColumnNumber;
         }
         return col;
-    }
-
-    /**
-     * Gets multiline Javadoc tags with arguments.
-     * @param argMultilineStart javadoc tag Matcher
-     * @param column column number of Javadoc tag
-     * @param lines comment text lines
-     * @param lineIndex line number that contains the javadoc tag
-     * @param tagLine javadoc tag line number in file
-     * @return javadoc tags with arguments
-     */
-    private static List<JavadocTag> getMultilineArgTags(final Matcher argMultilineStart,
-            final int column, final String[] lines, final int lineIndex, final int tagLine) {
-        final List<JavadocTag> tags = new ArrayList<>();
-        final String param1 = argMultilineStart.group(1);
-        final String param2 = argMultilineStart.group(2);
-        for (int remIndex = lineIndex + 1; remIndex < lines.length; remIndex++) {
-            final Matcher multilineCont = MATCH_JAVADOC_MULTILINE_CONT.matcher(lines[remIndex]);
-            if (multilineCont.find()) {
-                final String lFin = multilineCont.group(1);
-                if (!lFin.equals(NEXT_TAG)
-                    && !lFin.equals(END_JAVADOC)) {
-                    tags.add(new JavadocTag(tagLine, column, param1, param2));
-                }
-                break;
-            }
-        }
-
-        return tags;
     }
 
     /**
@@ -599,7 +801,7 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
                         || child.getType() == TokenTypes.DOT) {
                     final FullIdent ident = FullIdent.createFullIdent(child);
                     final ExceptionInfo exceptionInfo = new ExceptionInfo(
-                            createClassInfo(new Token(ident), getCurrentClassName()));
+                            createClassInfo(new Token(ident), currentClassName));
                     returnValue.add(exceptionInfo);
                 }
                 child = child.getNextSibling();
@@ -722,7 +924,7 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
     private void checkReturnTag(List<JavadocTag> tags, int lineNo,
         boolean reportExpectedTags) {
         // Loop over tags finding return tags. After the first one, report an
-        // error.
+        // violation.
         boolean found = false;
         final ListIterator<JavadocTag> it = tags.listIterator();
         while (it.hasNext()) {
@@ -772,7 +974,7 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
             final Token token = new Token(tag.getFirstArg(), tag.getLineNo(), tag
                     .getColumnNo());
             final AbstractClassInfo documentedClassInfo = createClassInfo(token,
-                    getCurrentClassName());
+                    currentClassName);
             final boolean found = foundThrows.contains(documentedEx)
                     || isInThrows(throwsList, documentedClassInfo, foundThrows);
 
@@ -846,6 +1048,372 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
         }
 
         return found;
+    }
+
+    /**
+     * Is exception is unchecked (subclass of {@code RuntimeException}
+     * or {@code Error}.
+     *
+     * @param exception {@code Class} of exception to check
+     * @return true  if exception is unchecked
+     *         false if exception is checked
+     */
+    private static boolean isUnchecked(Class<?> exception) {
+        return isSubclass(exception, RuntimeException.class)
+            || isSubclass(exception, Error.class);
+    }
+
+    /**
+     * Checks if one class is subclass of another.
+     *
+     * @param child {@code Class} of class
+     *               which should be child
+     * @param parent {@code Class} of class
+     *                which should be parent
+     * @return true  if aChild is subclass of aParent
+     *         false otherwise
+     */
+    private static boolean isSubclass(Class<?> child, Class<?> parent) {
+        return parent != null && child != null
+            && parent.isAssignableFrom(child);
+    }
+
+    /**
+     * Returns the current tree's ClassResolver.
+     * @return {@code ClassResolver} for current tree.
+     */
+    private ClassResolver getClassResolver() {
+        if (classResolver == null) {
+            classResolver =
+                new ClassResolver(getClass().getClassLoader(),
+                                  packageFullIdent.getText(),
+                                  imports);
+        }
+        return classResolver;
+    }
+
+    /**
+     * Attempts to resolve the Class for a specified name.
+     * @param resolvableClassName name of the class to resolve
+     * @param className name of surrounding class.
+     * @return the resolved class or {@code null}
+     *          if unable to resolve the class.
+     * @noinspection WeakerAccess
+     */
+    // -@cs[ForbidWildcardAsReturnType] The class is deprecated and will be removed soon.
+    private Class<?> resolveClass(String resolvableClassName,
+                                          String className) {
+        Class<?> clazz;
+        try {
+            clazz = getClassResolver().resolve(resolvableClassName, className);
+        }
+        // -@cs[IllegalCatch] Exception type is not predictable.
+        catch (final Exception ignored) {
+            clazz = null;
+        }
+        return clazz;
+    }
+
+    /**
+     * Tries to load class. Logs error if unable.
+     * @param ident name of class which we try to load.
+     * @param className name of surrounding class.
+     * @return {@code Class} for a ident.
+     * @noinspection WeakerAccess, MethodOnlyUsedFromInnerClass
+     */
+    // -@cs[ForbidWildcardAsReturnType] The class is deprecated and will be removed soon.
+    private Class<?> tryLoadClass(Token ident, String className) {
+        return resolveClass(ident.getText(), className);
+    }
+
+    /**
+     * Collects the details of a package.
+     * @param ast node containing the package details
+     */
+    private void processPackage(DetailAST ast) {
+        final DetailAST nameAST = ast.getLastChild().getPreviousSibling();
+        packageFullIdent = FullIdent.createFullIdent(nameAST);
+    }
+
+    /**
+     * Collects the details of imports.
+     * @param ast node containing the import details
+     */
+    private void processImport(DetailAST ast) {
+        final FullIdent name = FullIdent.createFullIdentBelow(ast);
+        imports.add(name.getText());
+    }
+
+    /**
+     * Process type params (if any) for given class, enum or method.
+     * @param ast class, enum or method to process.
+     */
+    private void processTypeParams(DetailAST ast) {
+        final DetailAST params =
+            ast.findFirstToken(TokenTypes.TYPE_PARAMETERS);
+
+        final Map<String, AbstractClassInfo> paramsMap = new HashMap<>();
+        currentTypeParams.push(paramsMap);
+
+        if (params != null) {
+            for (DetailAST child = params.getFirstChild();
+                 child != null;
+                 child = child.getNextSibling()) {
+                if (child.getType() == TokenTypes.TYPE_PARAMETER) {
+                    final DetailAST bounds =
+                        child.findFirstToken(TokenTypes.TYPE_UPPER_BOUNDS);
+                    if (bounds != null) {
+                        final FullIdent name =
+                            FullIdent.createFullIdentBelow(bounds);
+                        final AbstractClassInfo classInfo =
+                            createClassInfo(new Token(name), currentClassName);
+                        final String alias =
+                                child.findFirstToken(TokenTypes.IDENT).getText();
+                        paramsMap.put(alias, classInfo);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Processes class definition.
+     * @param ast class definition to process.
+     */
+    private void processClass(DetailAST ast) {
+        final DetailAST ident = ast.findFirstToken(TokenTypes.IDENT);
+        String innerClass = ident.getText();
+
+        if (!currentClassName.isEmpty()) {
+            innerClass = "$" + innerClass;
+        }
+        currentClassName += innerClass;
+        processTypeParams(ast);
+    }
+
+    /**
+     * Creates class info for given name.
+     * @param name name of type.
+     * @param surroundingClass name of surrounding class.
+     * @return class info for given name.
+     */
+    private AbstractClassInfo createClassInfo(final Token name,
+                                              final String surroundingClass) {
+        final AbstractClassInfo result;
+        final AbstractClassInfo classInfo = findClassAlias(name.getText());
+        if (classInfo == null) {
+            result = new RegularClass(name, surroundingClass, this);
+        }
+        else {
+            result = new ClassAlias(name, classInfo);
+        }
+        return result;
+    }
+
+    /**
+     * Looking if a given name is alias.
+     * @param name given name
+     * @return ClassInfo for alias if it exists, null otherwise
+     * @noinspection WeakerAccess
+     */
+    private AbstractClassInfo findClassAlias(final String name) {
+        AbstractClassInfo classInfo = null;
+        final Iterator<Map<String, AbstractClassInfo>> iterator = currentTypeParams
+                .descendingIterator();
+        while (iterator.hasNext()) {
+            final Map<String, AbstractClassInfo> paramMap = iterator.next();
+            classInfo = paramMap.get(name);
+            if (classInfo != null) {
+                break;
+            }
+        }
+        return classInfo;
+    }
+
+    /**
+     * Contains class's {@code Token}.
+     */
+    private abstract static class AbstractClassInfo {
+
+        /** {@code FullIdent} associated with this class. */
+        private final Token name;
+
+        /**
+         * Creates new instance of class information object.
+         * @param className token which represents class name.
+         */
+        protected AbstractClassInfo(final Token className) {
+            if (className == null) {
+                throw new IllegalArgumentException(
+                    "ClassInfo's name should be non-null");
+            }
+            name = className;
+        }
+
+        /**
+         * Returns class associated with that object.
+         * @return {@code Class} associated with an object.
+         */
+        // -@cs[ForbidWildcardAsReturnType] The class is deprecated and will be removed soon.
+        public abstract Class<?> getClazz();
+
+        /**
+         * Gets class name.
+         * @return class name
+         */
+        public final Token getName() {
+            return name;
+        }
+
+    }
+
+    /** Represents regular classes/enums. */
+    private static final class RegularClass extends AbstractClassInfo {
+
+        /** Name of surrounding class. */
+        private final String surroundingClass;
+        /** The check we use to resolve classes. */
+        private final JavadocMethodCheck check;
+        /** Is class loadable. */
+        private boolean loadable = true;
+        /** {@code Class} object of this class if it's loadable. */
+        private Class<?> classObj;
+
+        /**
+         * Creates new instance of of class information object.
+         * @param name {@code FullIdent} associated with new object.
+         * @param surroundingClass name of current surrounding class.
+         * @param check the check we use to load class.
+         */
+        /* package */ RegularClass(final Token name,
+                             final String surroundingClass,
+                             final JavadocMethodCheck check) {
+            super(name);
+            this.surroundingClass = surroundingClass;
+            this.check = check;
+        }
+
+        @Override
+        public Class<?> getClazz() {
+            if (loadable && classObj == null) {
+                setClazz(check.tryLoadClass(getName(), surroundingClass));
+            }
+            return classObj;
+        }
+
+        /**
+         * Associates {@code Class} with an object.
+         * @param clazz {@code Class} to associate with.
+         */
+        private void setClazz(Class<?> clazz) {
+            classObj = clazz;
+            loadable = clazz != null;
+        }
+
+        @Override
+        public String toString() {
+            return "RegularClass[name=" + getName()
+                    + ", in class='" + surroundingClass + '\''
+                    + ", check=" + check.hashCode()
+                    + ", loadable=" + loadable
+                    + ", class=" + classObj
+                    + ']';
+        }
+
+    }
+
+    /** Represents type param which is "alias" for real type. */
+    private static class ClassAlias extends AbstractClassInfo {
+
+        /** Class information associated with the alias. */
+        private final AbstractClassInfo classInfo;
+
+        /**
+         * Creates new instance of the class.
+         * @param name token which represents name of class alias.
+         * @param classInfo class information associated with the alias.
+         */
+        /* package */ ClassAlias(final Token name, AbstractClassInfo classInfo) {
+            super(name);
+            this.classInfo = classInfo;
+        }
+
+        @Override
+        public final Class<?> getClazz() {
+            return classInfo.getClazz();
+        }
+
+        @Override
+        public String toString() {
+            return "ClassAlias[alias " + getName() + " for " + classInfo.getName() + "]";
+        }
+
+    }
+
+    /**
+     * Represents text element with location in the text.
+     */
+    private static class Token {
+
+        /** Token's column number. */
+        private final int columnNo;
+        /** Token's line number. */
+        private final int lineNo;
+        /** Token's text. */
+        private final String text;
+
+        /**
+         * Creates token.
+         * @param text token's text
+         * @param lineNo token's line number
+         * @param columnNo token's column number
+         */
+        /* default */ Token(String text, int lineNo, int columnNo) {
+            this.text = text;
+            this.lineNo = lineNo;
+            this.columnNo = columnNo;
+        }
+
+        /**
+         * Converts FullIdent to Token.
+         * @param fullIdent full ident to convert.
+         */
+        /* default */ Token(FullIdent fullIdent) {
+            text = fullIdent.getText();
+            lineNo = fullIdent.getLineNo();
+            columnNo = fullIdent.getColumnNo();
+        }
+
+        /**
+         * Gets line number of the token.
+         * @return line number of the token
+         */
+        public int getLineNo() {
+            return lineNo;
+        }
+
+        /**
+         * Gets column number of the token.
+         * @return column number of the token
+         */
+        public int getColumnNo() {
+            return columnNo;
+        }
+
+        /**
+         * Gets text of the token.
+         * @return text of the token
+         */
+        public String getText() {
+            return text;
+        }
+
+        @Override
+        public String toString() {
+            return "Token[" + text + "(" + lineNo
+                + "x" + columnNo + ")]";
+        }
+
     }
 
     /** Stores useful information about declared exception. */

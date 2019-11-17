@@ -34,9 +34,12 @@ case $1 in
 pitest-annotation|pitest-design \
 |pitest-metrics|pitest-modifier|pitest-naming \
 |pitest-sizes|pitest-whitespace \
-|pitest-api \
+|pitest-api|pitest-blocks \
 |pitest-packagenamesloader \
-|pitest-common-2|pitest-misc|pitest-xpath)
+|pitest-common-2|pitest-misc|pitest-xpath \
+|pitest-filters \
+|pitest-main \
+|pitest-coding)
   mvn -e -P$1 clean test org.pitest:pitest-maven:mutationCoverage;
   declare -a ignoredItems=();
   checkPitestReport "${ignoredItems[@]}"
@@ -61,44 +64,6 @@ pitest-header)
   "RegexpHeaderCheck.java.html:<td class='covered'><pre><span  class='survived'>        if (list.length == 0) {</span></pre></td></tr>"
   "RegexpHeaderCheck.java.html:<td class='covered'><pre><span  class='survived'>                    isMatch = headerLineNo == headerSize</span></pre></td></tr>"
   "RegexpHeaderCheck.java.html:<td class='covered'><pre><span  class='survived'>                            || isMatch(line, headerLineNo);</span></pre></td></tr>"
-  );
-  checkPitestReport "${ignoredItems[@]}"
-  ;;
-
-pitest-filters)
-  mvn -e -P$1 clean test org.pitest:pitest-maven:mutationCoverage;
-  declare -a ignoredItems=(
-  "SuppressionCommentFilter.java.html:<td class='covered'><pre><span  class='survived'>        if (event.getLocalizedMessage() != null) {</span></pre></td></tr>"
-  "SuppressionCommentFilter.java.html:<td class='covered'><pre><span  class='survived'>                    if (filter.messageFormat == null) {</span></pre></td></tr>"
-  "SuppressionCommentFilter.java.html:<td class='covered'><pre><span  class='survived'>            if (getFileContents() != currentContents) {</span></pre></td></tr>"
-  "SuppressionCommentFilter.java.html:<td class='covered'><pre><span  class='survived'>            if (line == object.line) {</span></pre></td></tr>"
-  "SuppressionXpathSingleFilter.java.html:<td class='covered'><pre><span  class='survived'>        if (checks == null) {</span></pre></td></tr>"
-  "SuppressionXpathSingleFilter.java.html:<td class='covered'><pre><span  class='survived'>        if (files == null) {</span></pre></td></tr>"
-  "SuppressWithNearbyCommentFilter.java.html:<td class='covered'><pre><span  class='survived'>                else if (tagMessageRegexp == null) {</span></pre></td></tr>"
-  "SuppressWithNearbyCommentFilter.java.html:<td class='covered'><pre><span  class='survived'>                if (CommonUtil.startsWithChar(format, &#39;+&#39;)) {</span></pre></td></tr>"
-  "SuppressWithNearbyCommentFilter.java.html:<td class='covered'><pre><span  class='survived'>        if (event.getLocalizedMessage() != null) {</span></pre></td></tr>"
-  "SuppressWithNearbyCommentFilter.java.html:<td class='covered'><pre><span  class='survived'>                if (filter.messageFormat == null) {</span></pre></td></tr>"
-  "SuppressWithNearbyCommentFilter.java.html:<td class='covered'><pre><span  class='survived'>            if (getFileContents() != currentContents) {</span></pre></td></tr>"
-  "SuppressWithPlainTextCommentFilter.java.html:<td class='covered'><pre><span  class='survived'>                    if (filter.messageFormat == null) {</span></pre></td></tr>"
-  "XpathFilterElement.java.html:<td class='covered'><pre><span  class='survived'>                &#38;&#38; (checkRegexp == null || checkRegexp.matcher(event.getSourceName()).find());</span></pre></td></tr>"
-  "XpathFilterElement.java.html:<td class='covered'><pre><span  class='survived'>                &#38;&#38; event.getLocalizedMessage() != null</span></pre></td></tr>"
-  "XpathFilterElement.java.html:<td class='covered'><pre><span  class='survived'>                &#38;&#38; (fileRegexp == null || fileRegexp.matcher(event.getFileName()).find())</span></pre></td></tr>"
-  "XpathFilterElement.java.html:<td class='covered'><pre><span  class='survived'>                &#38;&#38; (moduleId == null || moduleId.equals(event.getModuleId()))</span></pre></td></tr>"
-  "XpathFilterElement.java.html:<td class='covered'><pre><span  class='survived'>        if (checks == null) {</span></pre></td></tr>"
-  "XpathFilterElement.java.html:<td class='covered'><pre><span  class='survived'>        if (checks == null) {</span></pre></td></tr>"
-  "XpathFilterElement.java.html:<td class='covered'><pre><span  class='survived'>        if (files == null) {</span></pre></td></tr>"
-  "XpathFilterElement.java.html:<td class='covered'><pre><span  class='survived'>                isMatching = abstractNode.getTokenType() == event.getTokenType()</span></pre></td></tr>"
-  "XpathFilterElement.java.html:<td class='covered'><pre><span  class='survived'>        return event.getFileName() != null</span></pre></td></tr>"
-  );
-  checkPitestReport "${ignoredItems[@]}"
-  ;;
-
-pitest-main)
-  mvn -e -P$1 clean test org.pitest:pitest-maven:mutationCoverage;
-  declare -a ignoredItems=(
-  "Main.java.html:<td class='covered'><pre><span  class='survived'>        if (node.canRead()) {</span></pre></td></tr>"
-  "Main.java.html:<td class='covered'><pre><span  class='survived'>        if (options.executeIgnoredModules) {</span></pre></td></tr>"
-  "Main.java.html:<td class='covered'><pre><span  class='survived'>        if (outputPath == null) {</span></pre></td></tr>"
   );
   checkPitestReport "${ignoredItems[@]}"
   ;;
@@ -143,18 +108,14 @@ pitest-common)
   "AuditEventDefaultFormatter.java.html:<td class='uncovered'><pre><span  class=''>                checkShortName = checkFullName;</span></pre></td></tr>"
   "AuditEventDefaultFormatter.java.html:<td class='uncovered'><pre><span  class='survived'>            if (checkFullName.endsWith(SUFFIX)) {</span></pre></td></tr>"
   "Checker.java.html:<td class='covered'><pre><span  class='survived'>                if (cacheFile != null &#38;&#38; cacheFile.isInCache(fileName, timestamp)</span></pre></td></tr>"
-  "ConfigurationLoader.java.html:<td class='covered'><pre><span  class='survived'>            final boolean omitIgnoreModules = ignoredModulesOptions == IgnoredModulesOptions.OMIT;</span></pre></td></tr>"
   "DefaultLogger.java.html:<td class='covered'><pre><span  class='survived'>        closeError = errorStreamOptions == OutputStreamOptions.CLOSE;</span></pre></td></tr>"
   "DefaultLogger.java.html:<td class='covered'><pre><span  class='survived'>        closeInfo = infoStreamOptions == OutputStreamOptions.CLOSE;</span></pre></td></tr>"
   "DefaultLogger.java.html:<td class='covered'><pre><span  class='survived'>        if (closeError) {</span></pre></td></tr>"
   "DefaultLogger.java.html:<td class='covered'><pre><span  class='survived'>        if (closeInfo) {</span></pre></td></tr>"
-  "DefaultLogger.java.html:<td class='covered'><pre><span  class='survived'>        if (infoStream == errorStream) {</span></pre></td></tr>"
   "DefaultLogger.java.html:<td class='covered'><pre><span  class='survived'>        if (severityLevel != SeverityLevel.IGNORE) {</span></pre></td></tr>"
   "ConfigurationLoader.java.html:<td class='uncovered'><pre><span  class=''>                    catch (final CheckstyleException ex) {</span></pre></td></tr>"
-  "ConfigurationLoader.java.html:<td class='uncovered'><pre><span  class=''>        catch (final ParserConfigurationException | IOException | SAXException ex) {</span></pre></td></tr>"
   "ConfigurationLoader.java.html:<td class='uncovered'><pre><span  class='survived'>                                        + recentModule.getName(), ex);</span></pre></td></tr>"
   "ConfigurationLoader.java.html:<td class='uncovered'><pre><span  class='survived'>                        throw new SAXException(</span></pre></td></tr>"
-  "ConfigurationLoader.java.html:<td class='uncovered'><pre><span  class='survived'>            throw new CheckstyleException(UNABLE_TO_PARSE_EXCEPTION_PREFIX, ex);</span></pre></td></tr>"
   "PackageObjectFactory.java.html:<td class='covered'><pre><span  class='survived'>        if (instance == null</span></pre></td></tr>"
   "PackageObjectFactory.java.html:<td class='covered'><pre><span  class='survived'>        if (!name.contains(PACKAGE_SEPARATOR)) {</span></pre></td></tr>"
   "PackageObjectFactory.java.html:<td class='covered'><pre><span  class='survived'>                if (thirdPartyNameToFullModuleNames == null) {</span></pre></td></tr>"
@@ -185,32 +146,6 @@ pitest-ant)
   "CheckstyleAntTask.java.html:<td class='covered'><pre><span  class='survived'>        log(&#34;To locate the files took &#34; + (endTime - startTime) + TIME_SUFFIX,</span></pre></td></tr>"
   "CheckstyleAntTask.java.html:<td class='uncovered'><pre><span  class=''>        catch (CheckstyleException ex) {</span></pre></td></tr>"
   "CheckstyleAntTask.java.html:<td class='uncovered'><pre><span  class='survived'>            throw new BuildException(&#34;Unable to process files: &#34; + files, ex);</span></pre></td></tr>"
-  );
-  checkPitestReport "${ignoredItems[@]}"
-  ;;
-
-pitest-blocks)
-  mvn -e -P$1 clean test org.pitest:pitest-maven:mutationCoverage;
-  declare -a ignoredItems=(
-  "RightCurlyCheck.java.html:<td class='covered'><pre><span  class='survived'>                &#38;&#38; tokenAfterNextToken.getType() == TokenTypes.SEMI</span></pre></td></tr>"
-  "RightCurlyCheck.java.html:<td class='covered'><pre><span  class='survived'>            else if (tokenType == TokenTypes.LITERAL_CATCH) {</span></pre></td></tr>"
-  "RightCurlyCheck.java.html:<td class='covered'><pre><span  class='survived'>            if (tokenType == TokenTypes.LITERAL_IF) {</span></pre></td></tr>"
-  "RightCurlyCheck.java.html:<td class='covered'><pre><span  class='survived'>        return rcurly.getParent().getParent().getType() == TokenTypes.INSTANCE_INIT</span></pre></td></tr>"
-  );
-  checkPitestReport "${ignoredItems[@]}"
-  ;;
-
-pitest-coding)
-  mvn -e -P$1 clean test org.pitest:pitest-maven:mutationCoverage;
-  declare -a ignoredItems=(
-  "EqualsAvoidNullCheck.java.html:<td class='covered'><pre><span  class='survived'>                    &#38;&#38; field.getColumnNo() + minimumSymbolsBetween &#60;= objCalledOn.getColumnNo()) {</span></pre></td></tr>"
-  "HiddenFieldCheck.java.html:<td class='covered'><pre><span  class='survived'>            processVariable(ast);</span></pre></td></tr>"
-  "MultipleVariableDeclarationsCheck.java.html:<td class='covered'><pre><span  class='survived'>                    &#38;&#38; newNode.getColumnNo() &#62; currentNode.getColumnNo()) {</span></pre></td></tr>"
-  "MultipleVariableDeclarationsCheck.java.html:<td class='covered'><pre><span  class='survived'>            if (newNode.getLineNo() &#62; currentNode.getLineNo()</span></pre></td></tr>"
-  "MultipleVariableDeclarationsCheck.java.html:<td class='covered'><pre><span  class='survived'>                || newNode.getLineNo() == currentNode.getLineNo()</span></pre></td></tr>"
-  "RequireThisCheck.java.html:<td class='covered'><pre><span  class='survived'>                    &#38;&#38; ast1.getColumnNo() &#60; ast2.getColumnNo()) {</span></pre></td></tr>"
-  "RequireThisCheck.java.html:<td class='covered'><pre><span  class='survived'>        final boolean methodNameInMethodCall = parentType == TokenTypes.DOT</span></pre></td></tr>"
-  "UnnecessaryParenthesesCheck.java.html:<td class='covered'><pre><span  class='survived'>        if (type != TokenTypes.ASSIGN</span></pre></td></tr>"
   );
   checkPitestReport "${ignoredItems[@]}"
   ;;
@@ -256,10 +191,11 @@ pitest-javadoc)
   "AbstractJavadocCheck.java.html:<td class='covered'><pre><span  class='survived'>        beginJavadocTree(root);</span></pre></td></tr>"
   "AbstractJavadocCheck.java.html:<td class='covered'><pre><span  class='survived'>        finishJavadocTree(root);</span></pre></td></tr>"
   "AbstractJavadocCheck.java.html:<td class='covered'><pre><span  class='survived'>        javadocTokens.clear();</span></pre></td></tr>"
-  "AbstractTypeAwareCheck.java.html:<td class='covered'><pre><span  class='survived'>        if (!currentClassName.isEmpty()) {</span></pre></td></tr>"
-  "AbstractTypeAwareCheck.java.html:<td class='covered'><pre><span  class='survived'>            if (dotIdx == -1) {</span></pre></td></tr>"
-  "AbstractTypeAwareCheck.java.html:<td class='covered'><pre><span  class='survived'>        imports.clear();</span></pre></td></tr>"
-  "AbstractTypeAwareCheck.java.html:<td class='covered'><pre><span  class='survived'>        typeParams.clear();</span></pre></td></tr>"
+  "JavadocMethodCheck.java.html:<td class='covered'><pre><span  class='survived'>        if (!currentClassName.isEmpty()) {</span></pre></td></tr>"
+  "JavadocMethodCheck.java.html:<td class='covered'><pre><span  class='survived'>            if (dotIdx == -1) {</span></pre></td></tr>"
+  "JavadocMethodCheck.java.html:<td class='covered'><pre><span  class='survived'>        imports.clear();</span></pre></td></tr>"
+  "JavadocMethodCheck.java.html:<td class='covered'><pre><span  class='survived'>        currentTypeParams.clear();</span></pre></td></tr>"
+  "JavadocMethodCheck.java.html:<td class='covered'><pre><span  class='survived'>            loadable = clazz != null;</span></pre></td></tr>"
   "ClassResolver.java.html:<td class='uncovered'><pre><span  class=''>        catch (final ClassNotFoundException ex) {</span></pre></td></tr>"
   "ClassResolver.java.html:<td class='uncovered'><pre><span  class='survived'>            throw new IllegalStateException(ex);</span></pre></td></tr>"
   "JavadocTagInfo.java.html:<td class='covered'><pre><span  class='survived'>            .collect(Collectors.toMap(JavadocTagInfo::getName, tagName -&#62; tagName)));</span></pre></td></tr>"
@@ -282,9 +218,7 @@ pitest-tree-walker)
 pitest-utils)
   mvn -e -P$1 clean test org.pitest:pitest-maven:mutationCoverage;
   declare -a ignoredItems=(
-  "CommonUtil.java.html:<td class='uncovered'><pre><span  class=''>                    uri = configUrl.toURI();</span></pre></td></tr>"
   "CommonUtil.java.html:<td class='uncovered'><pre><span  class=''>                catch (final URISyntaxException ex) {</span></pre></td></tr>"
-  "CommonUtil.java.html:<td class='uncovered'><pre><span  class=''>                }</span></pre></td></tr>"
   "CommonUtil.java.html:<td class='uncovered'><pre><span  class='survived'>                    throw new CheckstyleException(UNABLE_TO_FIND_EXCEPTION_PREFIX + filename, ex);</span></pre></td></tr>"
   );
   checkPitestReport "${ignoredItems[@]}"

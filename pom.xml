@@ -13,7 +13,7 @@
 
   <groupId>com.puppycrawl.tools</groupId>
   <artifactId>checkstyle</artifactId>
-  <version>8.21-SNAPSHOT</version>
+  <version>8.27-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>checkstyle</name>
@@ -193,21 +193,21 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <projectVersion>${project.version}</projectVersion>
     <antlr4.version>4.7.2</antlr4.version>
-    <maven.site.plugin.version>3.7.1</maven.site.plugin.version>
-    <maven.spotbugs.plugin.version>3.1.11</maven.spotbugs.plugin.version>
+    <maven.site.plugin.version>3.8.2</maven.site.plugin.version>
+    <maven.spotbugs.plugin.version>3.1.12.2</maven.spotbugs.plugin.version>
     <maven.pmd.plugin.version>3.12.0</maven.pmd.plugin.version>
-    <pmd.version>6.14.0</pmd.version>
-    <maven.jacoco.plugin.version>0.8.3</maven.jacoco.plugin.version>
-    <powermock.version>2.0.2</powermock.version>
-    <saxon.version>9.9.1-2</saxon.version>
-    <maven.checkstyle.plugin.version>3.0.0</maven.checkstyle.plugin.version>
-    <maven.sevntu.checkstyle.plugin.version>1.33.0</maven.sevntu.checkstyle.plugin.version>
+    <pmd.version>6.19.0</pmd.version>
+    <maven.jacoco.plugin.version>0.8.5</maven.jacoco.plugin.version>
+    <powermock.version>2.0.4</powermock.version>
+    <saxon.version>9.9.1-5</saxon.version>
+    <maven.checkstyle.plugin.version>3.1.0</maven.checkstyle.plugin.version>
+    <maven.sevntu.checkstyle.plugin.version>1.35.0</maven.sevntu.checkstyle.plugin.version>
     <maven.sevntu-checkstyle-check.checkstyle.version>
       8.18
     </maven.sevntu-checkstyle-check.checkstyle.version>
     <maven.versions.plugin.version>2.7</maven.versions.plugin.version>
     <java.version>1.8</java.version>
-    <pitest.plugin.version>1.4.7</pitest.plugin.version>
+    <pitest.plugin.version>1.4.9</pitest.plugin.version>
     <pitest.plugin.timeout.factor>10</pitest.plugin.timeout.factor>
     <pitest.plugin.timeout.constant>50000</pitest.plugin.timeout.constant>
     <pitest.plugin.threads>4</pitest.plugin.threads>
@@ -227,7 +227,7 @@
     <dependency>
       <groupId>info.picocli</groupId>
       <artifactId>picocli</artifactId>
-      <version>3.9.6</version>
+      <version>4.0.4</version>
     </dependency>
     <dependency>
       <groupId>antlr</groupId>
@@ -242,17 +242,17 @@
     <dependency>
       <groupId>commons-beanutils</groupId>
       <artifactId>commons-beanutils</artifactId>
-      <version>1.9.3</version>
+      <version>1.9.4</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>27.1-jre</version>
+      <version>28.1-jre</version>
     </dependency>
     <dependency>
       <groupId>org.apache.ant</groupId>
       <artifactId>ant</artifactId>
-      <version>1.10.5</version>
+      <version>1.10.7</version>
       <scope>provided</scope>
     </dependency>
 
@@ -272,7 +272,7 @@
     <dependency>
       <groupId>nl.jqno.equalsverifier</groupId>
       <artifactId>equalsverifier</artifactId>
-      <version>3.1.8</version>
+      <version>3.1.10</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -296,13 +296,13 @@
     <dependency>
       <groupId>org.eclipse.jgit</groupId>
       <artifactId>org.eclipse.jgit</artifactId>
-      <version>5.3.1.201904271842-r</version>
+      <version>5.5.1.201910021850-r</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-simple</artifactId>
-      <version>1.7.26</version>
+      <version>1.7.29</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -316,6 +316,12 @@
       <groupId>net.sf.saxon</groupId>
       <artifactId>Saxon-HE</artifactId>
       <version>${saxon.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.ibm.icu</groupId>
+          <artifactId>icu4j</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   </dependencies>
 
@@ -332,7 +338,7 @@
         </plugin>
         <plugin>
           <artifactId>maven-assembly-plugin</artifactId>
-          <version>3.1.1</version>
+          <version>3.2.0</version>
         </plugin>
         <plugin>
           <artifactId>maven-dependency-plugin</artifactId>
@@ -353,7 +359,7 @@
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>sonar-maven-plugin</artifactId>
-          <version>3.6.0.1398</version>
+          <version>3.6.1.1688</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -368,7 +374,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-javadoc-plugin</artifactId>
-          <version>3.1.0</version>
+          <version>3.1.1</version>
           <configuration>
             <source>${java.version}</source>
             <failOnError>true</failOnError>
@@ -386,7 +392,7 @@
           <artifactId>maven-pmd-plugin</artifactId>
           <version>${maven.pmd.plugin.version}</version>
           <configuration>
-            <analysisCache>false</analysisCache>
+            <analysisCache>true</analysisCache>
             <targetJdk>${java.version}</targetJdk>
             <minimumTokens>20</minimumTokens>
             <skipEmptyReport>false</skipEmptyReport>
@@ -546,7 +552,7 @@
         <dependencies>
           <dependency>
             <groupId>com.github.sevntu-checkstyle</groupId>
-            <artifactId>sevntu-checkstyle-maven-plugin</artifactId>
+            <artifactId>sevntu-checks</artifactId>
             <version>${maven.sevntu.checkstyle.plugin.version}</version>
           </dependency>
           <dependency>
@@ -650,7 +656,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.8.0</version>
+        <version>3.8.1</version>
         <configuration>
           <source>${java.version}</source>
           <target>${java.version}</target>
@@ -782,10 +788,6 @@
                 </exclude>
                 <!-- Swing related classes -->
                 <exclude>com/puppycrawl/tools/checkstyle/gui/*.class</exclude>
-                <!-- Deprecated classes -->
-                <exclude>
-                  com/puppycrawl/tools/checkstyle/checks/naming/AbstractTypeParameterNameCheck.class
-                </exclude>
                 <!-- Suppressed till https://github.com/jacoco/jacoco/issues/660 -->
                 <exclude>
                   com/puppycrawl/tools/checkstyle/checks/annotation/AnnotationUseStyleCheck$1.class
@@ -827,10 +829,6 @@
                     <exclude>com.puppycrawl.tools.checkstyle.gui.ParseTreeTableModel*</exclude>
                     <exclude>com.puppycrawl.tools.checkstyle.gui.TreeTableCellRenderer*</exclude>
                     <exclude>com.puppycrawl.tools.checkstyle.gui.TreeTableModelAdapter*</exclude>
-                    <!-- This class is in deprecation phase -->
-                    <exclude>
-                      com.puppycrawl.tools.checkstyle.checks.naming.AbstractTypeParameterNameCheck
-                    </exclude>
                   </excludes>
                   <limits>
                     <limit>
@@ -1115,7 +1113,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
-        <version>2.22.1</version>
+        <version>2.22.2</version>
         <configuration>
           <includes>
             <include>com/google/**/*.java</include>
@@ -1142,7 +1140,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.22.1</version>
+        <version>2.22.2</version>
         <configuration>
           <systemPropertyVariables>
             <jacoco-agent.destfile>${project.build.directory}/jacoco.exec</jacoco-agent.destfile>
@@ -1192,7 +1190,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-        <version>3.1.1</version>
+        <version>3.2.0</version>
         <configuration>
           <archive>
             <manifest>
@@ -1309,7 +1307,7 @@
       <plugin>
       <groupId>de.thetaphi</groupId>
       <artifactId>forbiddenapis</artifactId>
-      <version>2.6</version>
+      <version>2.7</version>
       <configuration>
         <targetVersion>${java.version}</targetVersion>
         <failOnUnsupportedJava>false</failOnUnsupportedJava>
@@ -1322,6 +1320,7 @@
         <excludes>
           <!-- system-out is ok there, that is CLI -->
           <exclude>**/Main.class</exclude>
+          <exclude>**/MainTest.class</exclude>
           <exclude>**/Main$CliOptions.class</exclude>
           <exclude>**/JavadocPropertiesGenerator.class</exclude>
           <!-- generated classes, unfortunately use problematic api -->
@@ -1353,7 +1352,7 @@
     <plugins>
       <plugin>
         <artifactId>maven-project-info-reports-plugin</artifactId>
-        <version>2.9</version>
+        <version>3.0.0</version>
       </plugin>
 
       <plugin>
@@ -1380,13 +1379,13 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-report-plugin</artifactId>
-        <version>2.21.0</version>
+        <version>2.22.2</version>
       </plugin>
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jxr-plugin</artifactId>
-        <version>2.5</version>
+        <version>3.0.0</version>
       </plugin>
 
       <plugin>
@@ -1801,6 +1800,7 @@
                 <param>com.puppycrawl.tools.checkstyle.checks.FinalParametersCheck*</param>
                 <param>com.puppycrawl.tools.checkstyle.checks.LineSeparatorOption*</param>
                 <param>com.puppycrawl.tools.checkstyle.checks.NewlineAtEndOfFileCheck*</param>
+                <param>com.puppycrawl.tools.checkstyle.checks.OrderedPropertiesCheck*</param>
                 <param>com.puppycrawl.tools.checkstyle.checks.OuterTypeFilenameCheck*</param>
                 <param>com.puppycrawl.tools.checkstyle.checks.SuppressWarningsHolder*</param>
                 <param>com.puppycrawl.tools.checkstyle.checks.TodoCommentCheck*</param>
@@ -1818,6 +1818,7 @@
                 <param>com.puppycrawl.tools.checkstyle.checks.DescendantTokenCheckTest</param>
                 <param>com.puppycrawl.tools.checkstyle.checks.FinalParametersCheckTest</param>
                 <param>com.puppycrawl.tools.checkstyle.checks.NewlineAtEndOfFileCheckTest</param>
+                <param>com.puppycrawl.tools.checkstyle.checks.OrderedPropertiesCheckTest</param>
                 <param>com.puppycrawl.tools.checkstyle.checks.OuterTypeFilenameCheckTest</param>
                 <param>com.puppycrawl.tools.checkstyle.checks.SuppressWarningsHolderTest</param>
                 <param>com.puppycrawl.tools.checkstyle.checks.TodoCommentCheckTest</param>
@@ -1920,7 +1921,7 @@
                 <param>*.Input*</param>
               </excludedTestClasses>
               <coverageThreshold>100</coverageThreshold>
-              <mutationThreshold>99</mutationThreshold>
+              <mutationThreshold>100</mutationThreshold>
               <timeoutFactor>${pitest.plugin.timeout.factor}</timeoutFactor>
               <timeoutConstant>${pitest.plugin.timeout.constant}</timeoutConstant>
               <threads>${pitest.plugin.threads}</threads>
@@ -1966,7 +1967,7 @@
                 <param>*.Input*</param>
               </excludedTestClasses>
               <coverageThreshold>100</coverageThreshold>
-              <mutationThreshold>98</mutationThreshold>
+              <mutationThreshold>100</mutationThreshold>
               <timeoutFactor>${pitest.plugin.timeout.factor}</timeoutFactor>
               <timeoutConstant>${pitest.plugin.timeout.constant}</timeoutConstant>
               <threads>${pitest.plugin.threads}</threads>
@@ -2097,6 +2098,10 @@
               <targetTests>
                 <param>com.puppycrawl.tools.checkstyle.checks.imports.*</param>
               </targetTests>
+              <excludedMethods>
+                <!-- unkilled in generated code https://github.com/hcoles/pitest/issues/255 -->
+                <param>loadUri</param>
+              </excludedMethods>
               <excludedTestClasses>
                 <param>*.Input*</param>
               </excludedTestClasses>
@@ -2193,7 +2198,7 @@
                 <param>*.Input*</param>
               </excludedTestClasses>
               <coverageThreshold>100</coverageThreshold>
-              <mutationThreshold>99</mutationThreshold>
+              <mutationThreshold>98</mutationThreshold>
               <timeoutFactor>${pitest.plugin.timeout.factor}</timeoutFactor>
               <timeoutConstant>${pitest.plugin.timeout.constant}</timeoutConstant>
               <threads>${pitest.plugin.threads}</threads>
@@ -2327,12 +2332,6 @@
               <excludedTestClasses>
                 <param>*.Input*</param>
               </excludedTestClasses>
-              <excludedClasses>
-                <!-- This class is in deprecation phase -->
-                <param>
-                  com.puppycrawl.tools.checkstyle.checks.naming.AbstractTypeParameterNameCheck
-                </param>
-              </excludedClasses>
               <coverageThreshold>100</coverageThreshold>
               <mutationThreshold>100</mutationThreshold>
               <timeoutFactor>${pitest.plugin.timeout.factor}</timeoutFactor>
@@ -2734,7 +2733,7 @@
                 <param>com.puppycrawl.tools.checkstyle.MainTest</param>
               </targetTests>
               <coverageThreshold>100</coverageThreshold>
-              <mutationThreshold>99</mutationThreshold>
+              <mutationThreshold>98</mutationThreshold>
               <timeoutFactor>${pitest.plugin.timeout.factor}</timeoutFactor>
               <timeoutConstant>${pitest.plugin.timeout.constant}</timeoutConstant>
               <threads>${pitest.plugin.threads}</threads>
@@ -2917,7 +2916,7 @@
                 <param>*.Input*</param>
               </excludedTestClasses>
               <coverageThreshold>100</coverageThreshold>
-              <mutationThreshold>97</mutationThreshold>
+              <mutationThreshold>100</mutationThreshold>
               <timeoutFactor>${pitest.plugin.timeout.factor}</timeoutFactor>
               <timeoutConstant>${pitest.plugin.timeout.constant}</timeoutConstant>
               <threads>${pitest.plugin.threads}</threads>
@@ -2956,6 +2955,10 @@
               <targetClasses>
                 <param>com.puppycrawl.tools.checkstyle.utils.*</param>
               </targetClasses>
+              <excludedMethods>
+                <!-- unkilled in generated code https://github.com/hcoles/pitest/issues/255 -->
+                <param>isFileExists</param>
+              </excludedMethods>
               <targetTests>
                 <param>com.puppycrawl.tools.checkstyle.utils.*</param>
                 <!-- 12% mutation in CommonUtil,
@@ -3041,7 +3044,7 @@
         <dependency>
             <groupId>org.eclipse.jdt</groupId>
             <artifactId>org.eclipse.jdt.annotation</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.300</version>
         </dependency>
       </dependencies>
       <build>

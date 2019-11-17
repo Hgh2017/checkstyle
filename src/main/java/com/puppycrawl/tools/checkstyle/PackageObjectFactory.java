@@ -537,6 +537,13 @@ public class PackageObjectFactory implements ModuleFactory {
                 BASE_PACKAGE + ".checks.coding.SuperFinalizeCheck");
         NAME_TO_FULL_MODULE_NAME.put("UnnecessaryParenthesesCheck",
                 BASE_PACKAGE + ".checks.coding.UnnecessaryParenthesesCheck");
+        NAME_TO_FULL_MODULE_NAME.put("UnnecessarySemicolonAfterTypeMemberDeclarationCheck",
+                BASE_PACKAGE
+                    + ".checks.coding.UnnecessarySemicolonAfterTypeMemberDeclarationCheck");
+        NAME_TO_FULL_MODULE_NAME.put("UnnecessarySemicolonInEnumerationCheck",
+                BASE_PACKAGE + ".checks.coding.UnnecessarySemicolonInEnumerationCheck");
+        NAME_TO_FULL_MODULE_NAME.put("UnnecessarySemicolonInTryWithResourcesCheck",
+                BASE_PACKAGE + ".checks.coding.UnnecessarySemicolonInTryWithResourcesCheck");
         NAME_TO_FULL_MODULE_NAME.put("VariableDeclarationUsageDistanceCheck",
                 BASE_PACKAGE + ".checks.coding.VariableDeclarationUsageDistanceCheck");
     }
@@ -613,6 +620,12 @@ public class PackageObjectFactory implements ModuleFactory {
     private static void fillChecksFromJavadocPackage() {
         NAME_TO_FULL_MODULE_NAME.put("AtclauseOrderCheck",
                 BASE_PACKAGE + ".checks.javadoc.AtclauseOrderCheck");
+        NAME_TO_FULL_MODULE_NAME.put("InvalidJavadocPositionCheck",
+                BASE_PACKAGE + ".checks.javadoc.InvalidJavadocPositionCheck");
+        NAME_TO_FULL_MODULE_NAME.put("JavadocBlockTagLocationCheck",
+                BASE_PACKAGE + ".checks.javadoc.JavadocBlockTagLocationCheck");
+        NAME_TO_FULL_MODULE_NAME.put("JavadocContentLocationCheck",
+                BASE_PACKAGE + ".checks.javadoc.JavadocContentLocationCheck");
         NAME_TO_FULL_MODULE_NAME.put("JavadocMethodCheck",
                 BASE_PACKAGE + ".checks.javadoc.JavadocMethodCheck");
         NAME_TO_FULL_MODULE_NAME.put("JavadocPackageCheck",
@@ -629,6 +642,8 @@ public class PackageObjectFactory implements ModuleFactory {
                 BASE_PACKAGE + ".checks.javadoc.JavadocVariableCheck");
         NAME_TO_FULL_MODULE_NAME.put("MissingJavadocMethodCheck",
                 BASE_PACKAGE + ".checks.javadoc.MissingJavadocMethodCheck");
+        NAME_TO_FULL_MODULE_NAME.put("MissingJavadocPackageCheck",
+                BASE_PACKAGE + ".checks.javadoc.MissingJavadocPackageCheck");
         NAME_TO_FULL_MODULE_NAME.put("MissingJavadocTypeCheck",
                 BASE_PACKAGE + ".checks.javadoc.MissingJavadocTypeCheck");
         NAME_TO_FULL_MODULE_NAME.put("NonEmptyAtclauseDescriptionCheck",
@@ -803,6 +818,8 @@ public class PackageObjectFactory implements ModuleFactory {
                 BASE_PACKAGE + ".checks.NewlineAtEndOfFileCheck");
         NAME_TO_FULL_MODULE_NAME.put("OuterTypeFilenameCheck",
                 BASE_PACKAGE + ".checks.OuterTypeFilenameCheck");
+        NAME_TO_FULL_MODULE_NAME.put("OrderedPropertiesCheck",
+                BASE_PACKAGE + ".checks.OrderedPropertiesCheck");
         NAME_TO_FULL_MODULE_NAME.put("SuppressWarningsHolder",
                 BASE_PACKAGE + ".checks.SuppressWarningsHolder");
         NAME_TO_FULL_MODULE_NAME.put("TodoCommentCheck",
@@ -839,6 +856,8 @@ public class PackageObjectFactory implements ModuleFactory {
                 BASE_PACKAGE + ".filters.SuppressionCommentFilter");
         NAME_TO_FULL_MODULE_NAME.put("SuppressionFilter",
                 BASE_PACKAGE + ".filters.SuppressionFilter");
+        NAME_TO_FULL_MODULE_NAME.put("SuppressionSingleFilter",
+                BASE_PACKAGE + ".filters.SuppressionSingleFilter");
         NAME_TO_FULL_MODULE_NAME.put("SuppressionXpathFilter",
                 BASE_PACKAGE + ".filters.SuppressionXpathFilter");
         NAME_TO_FULL_MODULE_NAME.put("SuppressionXpathSingleFilter",

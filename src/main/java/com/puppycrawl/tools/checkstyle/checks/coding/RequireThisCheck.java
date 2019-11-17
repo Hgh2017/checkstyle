@@ -451,14 +451,11 @@ public class RequireThisCheck extends AbstractCheck {
      */
     private AbstractFrame getFieldWithoutThis(DetailAST ast, int parentType) {
         final boolean importOrPackage = ScopeUtil.getSurroundingScope(ast) == null;
-        final boolean methodNameInMethodCall = parentType == TokenTypes.DOT
-                && ast.getPreviousSibling() != null;
         final boolean typeName = parentType == TokenTypes.TYPE
                 || parentType == TokenTypes.LITERAL_NEW;
         AbstractFrame frame = null;
 
         if (!importOrPackage
-                && !methodNameInMethodCall
                 && !typeName
                 && !isDeclarationToken(parentType)
                 && !isLambdaParameter(ast)) {
@@ -618,7 +615,7 @@ public class RequireThisCheck extends AbstractCheck {
         final DetailAST prevSibling = ast.getPreviousSibling();
         if (variableDeclarationFrameType == FrameType.CLASS_FRAME
                 && !validateOnlyOverlapping
-                && prevSibling == null
+                && (prevSibling == null || ast.getParent().getType() != TokenTypes.DOT)
                 && canBeReferencedFromStaticContext(ast)) {
             frameWhereViolationIsFound = variableDeclarationFrame;
         }
@@ -1257,25 +1254,8 @@ public class RequireThisCheck extends AbstractCheck {
         protected boolean isProperDefinition(DetailAST ident, DetailAST ast) {
             final String nameToFind = ident.getText();
             return nameToFind.equals(ast.getText())
-                && checkPosition(ast, ident);
+                && CheckUtil.isBeforeInSource(ast, ident);
         }
-
-        /**
-         * Whether the declaration is located before the checked ast.
-         * @param ast1 the IDENT ast of the declaration.
-         * @param ast2 the IDENT ast to check.
-         * @return true, if the declaration is located before the checked ast.
-         */
-        private static boolean checkPosition(DetailAST ast1, DetailAST ast2) {
-            boolean result = false;
-            if (ast1.getLineNo() < ast2.getLineNo()
-                    || ast1.getLineNo() == ast2.getLineNo()
-                    && ast1.getColumnNo() < ast2.getColumnNo()) {
-                result = true;
-            }
-            return result;
-        }
-
     }
 
     /**

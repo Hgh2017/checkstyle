@@ -35,7 +35,7 @@ import com.puppycrawl.tools.checkstyle.utils.CheckUtil;
  * also override method {@code equals(Object)}.
  * </p>
  * <p>
- * Covariant {@code equals()}- method that is similar to {@code equals(Object)},
+ * Covariant {@code equals()} - method that is similar to {@code equals(Object)},
  * but with a covariant parameter type (any subtype of Object).
  * </p>
  * <p>
@@ -144,8 +144,7 @@ public class CovariantEqualsCheck extends AbstractCheck {
             DetailAST child = objBlock.getFirstChild();
             boolean hasEqualsObject = false;
             while (child != null) {
-                if (child.getType() == TokenTypes.METHOD_DEF
-                        && CheckUtil.isEqualsMethod(child)) {
+                if (CheckUtil.isEqualsMethod(child)) {
                     if (isFirstParameterObject(child)) {
                         hasEqualsObject = true;
                     }

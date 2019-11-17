@@ -105,7 +105,7 @@ public class ElementNodeTest extends AbstractPathTestSupport {
 
     @Test
     public void testGetAttributeValue() {
-        final DetailAST detailAST = new DetailAstImpl();
+        final DetailAstImpl detailAST = new DetailAstImpl();
         detailAST.setType(TokenTypes.IDENT);
         detailAST.setText("HelloWorld");
 
@@ -117,7 +117,7 @@ public class ElementNodeTest extends AbstractPathTestSupport {
 
     @Test
     public void testGetAttributeValueNoAttribute() {
-        final DetailAST detailAST = new DetailAstImpl();
+        final DetailAstImpl detailAST = new DetailAstImpl();
         detailAST.setType(TokenTypes.CLASS_DEF);
         detailAST.setText("HelloWorld");
 
@@ -128,7 +128,7 @@ public class ElementNodeTest extends AbstractPathTestSupport {
 
     @Test
     public void testGetAttributeValueWrongAttribute() {
-        final DetailAST detailAST = new DetailAstImpl();
+        final DetailAstImpl detailAST = new DetailAstImpl();
         detailAST.setType(TokenTypes.IDENT);
         detailAST.setText("HelloWorld");
 
@@ -139,9 +139,9 @@ public class ElementNodeTest extends AbstractPathTestSupport {
 
     @Test
     public void testIterateAxisEmptyChildren() {
-        final DetailAST detailAST = new DetailAstImpl();
+        final DetailAstImpl detailAST = new DetailAstImpl();
         detailAST.setType(TokenTypes.METHOD_DEF);
-        final ElementNode elementNode = new ElementNode(rootNode, null, detailAST);
+        final ElementNode elementNode = new ElementNode(rootNode, rootNode, detailAST);
         try (AxisIterator iterator = elementNode.iterateAxis(AxisInfo.CHILD)) {
             assertTrue("Invalid iterator", iterator instanceof EmptyIterator);
         }
@@ -157,12 +157,31 @@ public class ElementNodeTest extends AbstractPathTestSupport {
         final DetailAstImpl childAst = new DetailAstImpl();
         childAst.setType(TokenTypes.VARIABLE_DEF);
         detailAST.addChild(childAst);
-        final ElementNode elementNode = new ElementNode(rootNode, null, detailAST);
+        final ElementNode elementNode = new ElementNode(rootNode, rootNode, detailAST);
         try (AxisIterator iterator = elementNode.iterateAxis(AxisInfo.CHILD)) {
             assertTrue("Invalid iterator", iterator instanceof ArrayIterator);
         }
         try (AxisIterator iterator = elementNode.iterateAxis(AxisInfo.DESCENDANT)) {
             assertTrue("Invalid iterator", iterator instanceof Navigator.DescendantEnumeration);
+        }
+    }
+
+    @Test
+    public void testIterateAxisWithNoSiblings() {
+        final DetailAstImpl detailAST = new DetailAstImpl();
+        detailAST.setType(TokenTypes.VARIABLE_DEF);
+
+        final DetailAstImpl parentAST = new DetailAstImpl();
+        parentAST.setFirstChild(detailAST);
+        parentAST.setType(TokenTypes.METHOD_DEF);
+        final AbstractNode parentNode = new ElementNode(rootNode, rootNode, parentAST);
+
+        final AbstractNode elementNode = parentNode.getChildren().get(0);
+        try (AxisIterator iterator = elementNode.iterateAxis(AxisInfo.FOLLOWING_SIBLING)) {
+            assertTrue("Invalid iterator", iterator instanceof EmptyIterator);
+        }
+        try (AxisIterator iterator = elementNode.iterateAxis(AxisInfo.PRECEDING_SIBLING)) {
+            assertTrue("Invalid iterator", iterator instanceof EmptyIterator);
         }
     }
 }

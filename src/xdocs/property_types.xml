@@ -577,8 +577,11 @@
           <td><code>expanded</code></td>
           <td>
             The expanded version is sometimes referred to as "named parameters"
-            in other languages. Example:
+            in other languages.
+            Example:
             <pre>@SuppressWarnings(value={"unchecked","unused",})</pre>
+            Example of violation:
+            <pre>@SuppressWarnings({"unchecked","unused",})</pre>
           </td>
         </tr>
 
@@ -587,10 +590,17 @@
           <td>
             This style can only be used when there is an element called 'value'
             which is either the sole element or all other elements have default
-            values. Examples:
-            <pre>@SuppressWarnings({"unchecked","unused",})</pre>
-            and:
-            <pre>@SuppressWarnings("unchecked")</pre>
+            values.
+            Example:
+            <pre>
+                @SuppressWarnings({"unchecked","unused",})
+                @SuppressWarnings("unchecked")
+            </pre>
+            Example of violation:
+            <pre>
+                @SuppressWarnings(value = {"unchecked","unused",})
+                @SuppressWarnings(value = "unchecked")
+            </pre>
           </td>
         </tr>
 
@@ -600,10 +610,16 @@
             It is similar to the <code>compact</code> style but
             single value arrays are flagged. With annotations a single value
             array does not need to be placed in an array initializer.
-            This style can only be used when there is an element called 'value'
-            which is either the sole element or all other elements have
-            default values.
-            Example: <pre>@SuppressWarnings("unchecked")</pre>
+            Example:
+            <pre>
+              @SuppressWarnings("unchecked")
+              @MyAnnotation(someArray = "some value")
+            </pre>
+            Example of violation:
+            <pre>
+              @SuppressWarnings({"unchecked"})
+              @MyAnnotation(someArray = {"some value"})
+            </pre>
           </td>
         </tr>
 
@@ -687,6 +703,54 @@
             Anything goes.
           </td>
         </tr>
+      </table>
+    </section>
+
+    <section name="javadocContentLocation">
+      <p>
+        This type represents policy on placement of the Javadoc content.
+        The following table describes the valid options:
+      </p>
+
+      <table summary="javadocContentLocation options">
+        <tr>
+          <td>Option</td>
+          <td>Definition</td>
+        </tr>
+
+        <tr>
+          <td><code>FIRST_LINE</code></td>
+          <td>
+            Represents the policy for Javadoc content starts from the same line
+            as <code>/**</code>.
+            Example:
+            <pre>
+            &#47;** Summary text.
+              * More details.
+              *&#47;
+            public void method();
+            </pre>
+            This style is also known as "scala" style.
+          </td>
+        </tr>
+
+        <tr>
+          <td><code>SECOND_LINE</code></td>
+          <td>
+            Represents the policy for Javadoc content starts from the next line
+            after <code>/**</code>.
+            Example:
+            <pre>
+              &#47;**
+              * Summary text.
+              * More details.
+              *&#47;
+              public void method();
+            </pre>
+            This style is common to java projects.
+          </td>
+        </tr>
+
       </table>
     </section>
   </body>

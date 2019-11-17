@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -301,26 +302,6 @@ public class TreeWalkerTest extends AbstractModuleTestSupport {
     }
 
     @Test
-    public void testRequiredTokenIsNotInDefaultTokens() throws Exception {
-        final DefaultConfiguration checkConfig =
-            createModuleConfig(RequiredTokenIsNotInDefaultsCheck.class);
-        final String pathToEmptyFile = temporaryFolder.newFile("file.java").getPath();
-
-        try {
-            final String[] expected = CommonUtil.EMPTY_STRING_ARRAY;
-            verify(checkConfig, pathToEmptyFile, expected);
-            fail("CheckstyleException is expected");
-        }
-        catch (CheckstyleException ex) {
-            assertTrue("Error message is unexpected",
-                    ex.getMessage().startsWith("cannot initialize module"
-                + " com.puppycrawl.tools.checkstyle.TreeWalker - Token \""
-                + TokenTypes.ASSIGN + "\" from required"
-                + " tokens was not found in default tokens list in check"));
-        }
-    }
-
-    @Test
     public void testRequiredTokenIsEmptyIntArray() throws Exception {
         final DefaultConfiguration checkConfig =
             createModuleConfig(RequiredTokenIsEmptyIntArray.class);
@@ -374,6 +355,26 @@ public class TreeWalkerTest extends AbstractModuleTestSupport {
     }
 
     @Test
+    public void testSetupChild() throws Exception {
+        final TreeWalker treeWalker = new TreeWalker();
+        final PackageObjectFactory factory = new PackageObjectFactory(
+                new HashSet<>(), Thread.currentThread().getContextClassLoader());
+        treeWalker.setModuleFactory(factory);
+        treeWalker.setTabWidth(99);
+        treeWalker.finishLocalSetup();
+
+        final Configuration config = new DefaultConfiguration(
+                XpathFileGeneratorAstFilter.class.getName());
+
+        treeWalker.setupChild(config);
+
+        final Set<TreeWalkerFilter> filters = Whitebox.getInternalState(treeWalker, "filters");
+        final int tabWidth = Whitebox.getInternalState(filters.iterator().next(), "tabWidth");
+
+        assertEquals("expected tab width", 99, tabWidth);
+    }
+
+    @Test
     public void testBehaviourWithChecksAndFilters() throws Exception {
         final DefaultConfiguration filterConfig =
                 createModuleConfig(SuppressionCommentFilter.class);
@@ -409,8 +410,6 @@ public class TreeWalkerTest extends AbstractModuleTestSupport {
         treeWalker.finishLocalSetup();
 
         final Context context = Whitebox.getInternalState(treeWalker, "childContext");
-        assertEquals("Classloader object differs from expected",
-                contextClassLoader, context.get("classLoader"));
         assertEquals("Severity differs from expected",
                 "error", context.get("severity"));
         assertEquals("Tab width differs from expected",
@@ -603,25 +602,6 @@ public class TreeWalkerTest extends AbstractModuleTestSupport {
         @Override
         public boolean isCommentNodesRequired() {
             return true;
-        }
-
-    }
-
-    private static class RequiredTokenIsNotInDefaultsCheck extends AbstractCheck {
-
-        @Override
-        public int[] getRequiredTokens() {
-            return new int[] {TokenTypes.ASSIGN};
-        }
-
-        @Override
-        public int[] getDefaultTokens() {
-            return new int[] {TokenTypes.ANNOTATION};
-        }
-
-        @Override
-        public int[] getAcceptableTokens() {
-            return CommonUtil.EMPTY_INT_ARRAY;
         }
 
     }

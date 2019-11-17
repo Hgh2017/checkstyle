@@ -67,6 +67,7 @@ import com.puppycrawl.tools.checkstyle.api.AbstractCheck;
 import com.puppycrawl.tools.checkstyle.api.AbstractFileSetCheck;
 import com.puppycrawl.tools.checkstyle.api.AuditEvent;
 import com.puppycrawl.tools.checkstyle.api.AuditListener;
+import com.puppycrawl.tools.checkstyle.api.AutomaticBean.OutputStreamOptions;
 import com.puppycrawl.tools.checkstyle.api.CheckstyleException;
 import com.puppycrawl.tools.checkstyle.api.Configuration;
 import com.puppycrawl.tools.checkstyle.api.Context;
@@ -89,6 +90,10 @@ import com.puppycrawl.tools.checkstyle.internal.testmodules.TestFileSetCheck;
 import com.puppycrawl.tools.checkstyle.internal.utils.CloseAndFlushTestByteArrayOutputStream;
 import com.puppycrawl.tools.checkstyle.utils.CommonUtil;
 
+/**
+ * CheckerTest.
+ * @noinspection ClassWithTooManyDependencies
+ */
 public class CheckerTest extends AbstractModuleTestSupport {
 
     @Rule
@@ -348,7 +353,7 @@ public class CheckerTest extends AbstractModuleTestSupport {
     public void testSetters() {
         // all  that is set by reflection, so just make code coverage be happy
         final Checker checker = new Checker();
-        checker.setClassLoader(getClass().getClassLoader());
+        checker.setClassLoader(null);
         checker.setBasedir("some");
         checker.setSeverity("ignore");
 
@@ -395,7 +400,6 @@ public class CheckerTest extends AbstractModuleTestSupport {
 
         assertNotNull("Default module factory should be created when it is not specified",
             actualCtx.get("moduleFactory"));
-        assertEquals("Invalid classLoader", classLoader, actualCtx.get("classLoader"));
     }
 
     @Test
@@ -415,8 +419,6 @@ public class CheckerTest extends AbstractModuleTestSupport {
         assertEquals("Charset was different than expected",
                 System.getProperty("file.encoding", StandardCharsets.UTF_8.name()),
                 context.get("charset"));
-        assertEquals("Was used insufficient classloader",
-                contextClassLoader, context.get("classLoader"));
         assertEquals("Severity is set to unexpected value",
                 "error", context.get("severity"));
         assertEquals("Basedir is set to unexpected value",
@@ -1323,7 +1325,7 @@ public class CheckerTest extends AbstractModuleTestSupport {
                 new CloseAndFlushTestByteArrayOutputStream()) {
             checker.setModuleClassLoader(Thread.currentThread().getContextClassLoader());
             checker.addListener(new DefaultLogger(testInfoOutputStream,
-                true, testErrorOutputStream, true));
+                OutputStreamOptions.CLOSE, testErrorOutputStream, OutputStreamOptions.CLOSE));
 
             final File tmpFile = temporaryFolder.newFile("file.java");
             final String[] expected = CommonUtil.EMPTY_STRING_ARRAY;
@@ -1348,7 +1350,7 @@ public class CheckerTest extends AbstractModuleTestSupport {
         try (CloseAndFlushTestByteArrayOutputStream testInfoOutputStream =
                 new CloseAndFlushTestByteArrayOutputStream()) {
             checker.setModuleClassLoader(Thread.currentThread().getContextClassLoader());
-            checker.addListener(new XMLLogger(testInfoOutputStream, true));
+            checker.addListener(new XMLLogger(testInfoOutputStream, OutputStreamOptions.CLOSE));
 
             final File tmpFile = temporaryFolder.newFile("file.java");
             final String[] expected = CommonUtil.EMPTY_STRING_ARRAY;
@@ -1379,16 +1381,16 @@ public class CheckerTest extends AbstractModuleTestSupport {
         // BriefUtLogger does not print the module name or id postfix,
         // so we need to set logger manually
         final ByteArrayOutputStream out = Whitebox.getInternalState(this, "stream");
-        final DefaultLogger logger =
-                new DefaultLogger(out, true, out, false, new AuditEventDefaultFormatter());
+        final DefaultLogger logger = new DefaultLogger(out, OutputStreamOptions.CLOSE, out,
+                OutputStreamOptions.NONE, new AuditEventDefaultFormatter());
         checker.addListener(logger);
 
         final String path = temporaryFolder.newFile("file.java").getPath();
-        final String errorMessage =
+        final String violationMessage =
                 getCheckMessage(NewlineAtEndOfFileCheck.class, MSG_KEY_NO_NEWLINE_EOF);
         final String[] expected = {
-            "1: " + errorMessage + " [NewlineAtEndOfFile]",
-            "1: " + errorMessage + " [ModuleId]",
+            "1: " + violationMessage + " [NewlineAtEndOfFile]",
+            "1: " + violationMessage + " [ModuleId]",
         };
 
         // super.verify does not work here, for we change the logger

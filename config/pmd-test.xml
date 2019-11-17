@@ -109,7 +109,7 @@
         <!-- PMD cannot find assert if it is located in private method of this class called from
                the test method or method of another class. -->
         <properties>
-            <!-- In AllChecksTest, AstRegressionTest, DetailAstImplTest and ImportControlCheckTest
+            <!-- In AllChecksTest, AstRegressionTest and ImportControlCheckTest
                    PMD does not find asserts in private methods of the test class called from the
                    test method.
                  In MainTest PMD does not find asserts in lambdas called in the method
@@ -121,7 +121,7 @@
                  method. -->
             <property name="violationSuppressXPath"
                       value="//ClassOrInterfaceDeclaration[@Image='AllChecksTest'
-              or @Image='AstRegressionTest' or @Image='DetailAstImplTest'
+              or @Image='AstRegressionTest'
               or @Image='ImportControlCheckTest']//PrimaryPrefix/Name[@Image='verify']
             | //ClassOrInterfaceDeclaration[@Image='MainTest']
                   //PrimaryPrefix//Name[starts-with(@Image, 'assert')]
@@ -173,7 +173,7 @@
             <!-- This inherited from GeneratedJavaLexer. -->
             <property name="violationSuppressXPath"
                       value="//ClassOrInterfaceDeclaration[@Image='AssertGeneratedJavaLexer']
-                  //MethodDeclarator[@Image='LA']"/>
+                  //MethodDeclaration[@Name='LA']"/>
         </properties>
     </rule>
 
@@ -186,9 +186,29 @@
             <property name="violationSuppressXPath"
                       value="//ClassOrInterfaceDeclaration[
                       @Image='SuppressionXpathSingleFilterTest']
-                  //MethodDeclarator[@Image='createSuppressionXpathSingleFilter']
+                  //MethodDeclaration[@Name='createSuppressionXpathSingleFilter']
                   | //ClassOrInterfaceDeclaration[ @Image='XdocsPagesTest']
-                        //MethodDeclarator[@Image='validateRuleNameOrder']"/>
+                        //MethodDeclaration[@Name='validateRuleNameOrder']"/>
+        </properties>
+    </rule>
+    <rule ref="category/java/errorprone.xml/CloseResource">
+        <properties>
+            <!-- we do close streams in special methods -->
+            <property name="violationSuppressXPath"
+                      value="
+                      //ClassOrInterfaceDeclaration[@Image='XdocsPagesTest']
+                                 //MethodDeclaration[@Name='getModulePropertyExpectedValue']
+                      |//ClassOrInterfaceDeclaration[@Image='DefaultLoggerPowerTest']
+                                 //MethodDeclaration[@Name='testNewCtor']
+                      |//ClassOrInterfaceDeclaration[@Image='ImportControlLoaderPowerTest']
+                                 //MethodDeclaration[@Name='testInputStreamThatFailsOnClose']
+                      |//ClassOrInterfaceDeclaration[@Image='ImportControlLoaderPowerTest']
+                                 //MethodDeclaration[@Name='testInputStreamFailsOnRead']
+                      |//ClassOrInterfaceDeclaration[@Image='XpathFileGeneratorAuditListenerTest']
+                                 //MethodDeclaration[@Name='verifyOutput']
+                      |//ClassOrInterfaceDeclaration[@Image='CommonUtilTest']
+                                 //MethodDeclaration[@Name='testClose']
+                      "/>
         </properties>
     </rule>
 </ruleset>

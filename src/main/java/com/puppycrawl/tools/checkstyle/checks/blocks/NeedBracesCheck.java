@@ -19,6 +19,8 @@
 
 package com.puppycrawl.tools.checkstyle.checks.blocks;
 
+import java.util.Optional;
+
 import com.puppycrawl.tools.checkstyle.StatelessCheck;
 import com.puppycrawl.tools.checkstyle.api.AbstractCheck;
 import com.puppycrawl.tools.checkstyle.api.DetailAST;
@@ -119,6 +121,29 @@ import com.puppycrawl.tools.checkstyle.utils.CommonUtil;
  * while (value.incrementValue() &lt; 5); // OK
  * for(int i = 0; i &lt; 10; value.incrementValue()); // OK
  * </pre>
+ * <p>
+ * To configure the check to lambdas:
+ * </p>
+ * <pre>
+ * &lt;module name=&quot;NeedBraces&quot;&gt;
+ *   &lt;property name=&quot;tokens&quot; value=&quot;LAMBDA&quot;/&gt;
+ *   &lt;property name=&quot;allowSingleLineStatement&quot; value=&quot;true&quot;/&gt;
+ * &lt;/module&gt;
+ * </pre>
+ * <p>
+ * Results in following:
+ * </p>
+ * <pre>
+ * allowedFuture.addCallback(result -&gt; assertEquals("Invalid response",
+ *   EnumSet.of(HttpMethod.GET, HttpMethod.OPTIONS), result), // violation, lambda spans 2 lines
+ *   ex -&gt; fail(ex.getMessage())); // OK
+ *
+ * allowedFuture.addCallback(result -&gt; {
+ *   return assertEquals("Invalid response",
+ *     EnumSet.of(HttpMethod.GET, HttpMethod.OPTIONS), result);
+ *   }, // OK
+ *   ex -&gt; fail(ex.getMessage()));
+ * </pre>
  *
  * @since 3.0
  */
@@ -189,33 +214,67 @@ public class NeedBracesCheck extends AbstractCheck {
 
     @Override
     public void visitToken(DetailAST ast) {
-        final DetailAST slistAST = ast.findFirstToken(TokenTypes.SLIST);
-        boolean isElseIf = false;
-        if (ast.getType() == TokenTypes.LITERAL_ELSE
-            && ast.findFirstToken(TokenTypes.LITERAL_IF) != null) {
-            isElseIf = true;
-        }
-        final boolean isInAnnotationField = isInAnnotationField(ast);
-        final boolean skipStatement = isSkipStatement(ast);
-        final boolean skipEmptyLoopBody = allowEmptyLoopBody && isEmptyLoopBody(ast);
-
-        if (slistAST == null && !isElseIf && !isInAnnotationField
-                && !skipStatement && !skipEmptyLoopBody) {
+        final boolean hasNoSlist = ast.findFirstToken(TokenTypes.SLIST) == null;
+        if (hasNoSlist && !isSkipStatement(ast) && isBracesNeeded(ast)) {
             log(ast.getLineNo(), MSG_KEY_NEED_BRACES, ast.getText());
         }
     }
 
     /**
-     * Checks if ast is in an annotation field.
-     * @param ast ast to test.
-     * @return true if current ast is part of an annotation field.
+     * Checks if token needs braces.
+     * Some tokens have additional conditions:
+     * <ul>
+     *     <li>{@link TokenTypes#LITERAL_FOR}</li>
+     *     <li>{@link TokenTypes#LITERAL_WHILE}</li>
+     *     <li>{@link TokenTypes#LITERAL_CASE}</li>
+     *     <li>{@link TokenTypes#LITERAL_DEFAULT}</li>
+     *     <li>{@link TokenTypes#LITERAL_ELSE}</li>
+     * </ul>
+     * For all others default value {@code true} is returned.
+     * @param ast token to check
+     * @return result of additional checks for specific token types,
+     * {@code true} if there is no additional checks for token
      */
-    private static boolean isInAnnotationField(DetailAST ast) {
-        boolean isDefaultInAnnotation = false;
-        if (ast.getParent().getType() == TokenTypes.ANNOTATION_FIELD_DEF) {
-            isDefaultInAnnotation = true;
+    private boolean isBracesNeeded(DetailAST ast) {
+        final boolean result;
+        switch (ast.getType()) {
+            case TokenTypes.LITERAL_FOR:
+            case TokenTypes.LITERAL_WHILE:
+                result = !isEmptyLoopBodyAllowed(ast);
+                break;
+            case TokenTypes.LITERAL_CASE:
+            case TokenTypes.LITERAL_DEFAULT:
+                result = hasUnbracedStatements(ast);
+                break;
+            case TokenTypes.LITERAL_ELSE:
+                result = ast.findFirstToken(TokenTypes.LITERAL_IF) == null;
+                break;
+            default:
+                result = true;
+                break;
         }
-        return isDefaultInAnnotation;
+        return result;
+    }
+
+    /**
+     * Checks if current loop has empty body and can be skipped by this check.
+     * @param ast for, while statements.
+     * @return true if current loop can be skipped by check.
+     */
+    private boolean isEmptyLoopBodyAllowed(DetailAST ast) {
+        return allowEmptyLoopBody && ast.findFirstToken(TokenTypes.EMPTY_STAT) != null;
+    }
+
+    /**
+     * Checks if switch member (case, default statements) has statements without curly braces.
+     * @param ast case, default statements.
+     * @return true if switch member has unbraced statements, false otherwise.
+     */
+    private static boolean hasUnbracedStatements(DetailAST ast) {
+        final DetailAST nextSibling = ast.getNextSibling();
+        return nextSibling != null
+            && nextSibling.getType() == TokenTypes.SLIST
+            && nextSibling.getFirstChild().getType() != TokenTypes.SLIST;
     }
 
     /**
@@ -228,29 +287,13 @@ public class NeedBracesCheck extends AbstractCheck {
     }
 
     /**
-     * Checks if current loop statement does not have body, e.g.:
-     * <p>
-     * {@code
-     *   while (value.incrementValue() < 5);
-     *   ...
-     *   for(int i = 0; i < 10; value.incrementValue());
-     * }
-     * </p>
-     * @param ast ast token.
-     * @return true if current loop statement does not have body.
+     * Checks if two ast nodes are on the same line.
+     * @param first ast to check
+     * @param second ast to check
+     * @return true if elements on same line, false otherwise
      */
-    private static boolean isEmptyLoopBody(DetailAST ast) {
-        boolean noBodyLoop = false;
-
-        if (ast.getType() == TokenTypes.LITERAL_FOR
-                || ast.getType() == TokenTypes.LITERAL_WHILE) {
-            DetailAST currentToken = ast.getFirstChild();
-            while (currentToken.getNextSibling() != null) {
-                currentToken = currentToken.getNextSibling();
-            }
-            noBodyLoop = currentToken.getType() == TokenTypes.EMPTY_STAT;
-        }
-        return noBodyLoop;
+    private static boolean isOnSameLine(DetailAST first, DetailAST second) {
+        return first.getLineNo() == second.getLineNo();
     }
 
     /**
@@ -288,10 +331,8 @@ public class NeedBracesCheck extends AbstractCheck {
                 result = isSingleLineLambda(statement);
                 break;
             case TokenTypes.LITERAL_CASE:
-                result = isSingleLineCase(statement);
-                break;
             case TokenTypes.LITERAL_DEFAULT:
-                result = isSingleLineDefault(statement);
+                result = isSingleLineSwitchMember(statement);
                 break;
             default:
                 result = isSingleLineElse(statement);
@@ -315,7 +356,7 @@ public class NeedBracesCheck extends AbstractCheck {
         boolean result = false;
         if (literalWhile.getParent().getType() == TokenTypes.SLIST) {
             final DetailAST block = literalWhile.getLastChild().getPreviousSibling();
-            result = literalWhile.getLineNo() == block.getLineNo();
+            result = isOnSameLine(literalWhile, block);
         }
         return result;
     }
@@ -334,7 +375,7 @@ public class NeedBracesCheck extends AbstractCheck {
         boolean result = false;
         if (literalDo.getParent().getType() == TokenTypes.SLIST) {
             final DetailAST block = literalDo.getFirstChild();
-            result = block.getLineNo() == literalDo.getLineNo();
+            result = isOnSameLine(block, literalDo);
         }
         return result;
     }
@@ -355,7 +396,7 @@ public class NeedBracesCheck extends AbstractCheck {
             result = true;
         }
         else if (literalFor.getParent().getType() == TokenTypes.SLIST) {
-            result = literalFor.getLineNo() == literalFor.getLastChild().getLineNo();
+            result = isOnSameLine(literalFor, literalFor.getLastChild());
         }
         return result;
     }
@@ -382,7 +423,7 @@ public class NeedBracesCheck extends AbstractCheck {
                 block = literalIfLastChild;
             }
             final DetailAST ifCondition = literalIf.findFirstToken(TokenTypes.EXPR);
-            result = ifCondition.getLineNo() == block.getLineNo();
+            result = isOnSameLine(ifCondition, block);
         }
         return result;
     }
@@ -398,62 +439,44 @@ public class NeedBracesCheck extends AbstractCheck {
      * @return true if current lambda statement is single-line statement.
      */
     private static boolean isSingleLineLambda(DetailAST lambda) {
-        final DetailAST block = lambda.getLastChild();
-        return lambda.getLineNo() == block.getLineNo();
+        final DetailAST lastLambdaToken = getLastLambdaToken(lambda);
+        return isOnSameLine(lambda, lastLambdaToken);
     }
 
     /**
-     * Checks if current case statement is single-line statement, e.g.:
+     * Looks for the last token in lambda.
+     *
+     * @param lambda token to check.
+     * @return last token in lambda
+     */
+    private static DetailAST getLastLambdaToken(DetailAST lambda) {
+        DetailAST node = lambda;
+        do {
+            node = node.getLastChild();
+        } while (node.getLastChild() != null);
+        return node;
+    }
+
+    /**
+     * Checks if switch member (case or default statement) is single-line statement, e.g.:
      * <p>
      * {@code
      * case 1: doSomeStuff(); break;
      * case 2: doSomeStuff(); break;
      * case 3: ;
+     * default: doSomeStuff();break;
      * }
      * </p>
-     * @param literalCase {@link TokenTypes#LITERAL_CASE case statement}.
-     * @return true if current case statement is single-line statement.
+     * @param ast {@link TokenTypes#LITERAL_CASE case statement} or
+     * {@link TokenTypes#LITERAL_DEFAULT default statement}.
+     * @return true if current switch member is single-line statement.
      */
-    private static boolean isSingleLineCase(DetailAST literalCase) {
-        boolean result = false;
-        final DetailAST slist = literalCase.getNextSibling();
-        if (slist == null) {
-            result = true;
-        }
-        else {
-            final DetailAST caseBreak = slist.findFirstToken(TokenTypes.LITERAL_BREAK);
-            if (caseBreak != null) {
-                final DetailAST block = slist.getFirstChild();
-                final boolean atOneLine = literalCase.getLineNo() == block.getLineNo();
-                result = atOneLine && block.getLineNo() == caseBreak.getLineNo();
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Checks if current default statement is single-line statement, e.g.:
-     * <p>
-     * {@code
-     * default: doSomeStuff();
-     * }
-     * </p>
-     * @param literalDefault {@link TokenTypes#LITERAL_DEFAULT default statement}.
-     * @return true if current default statement is single-line statement.
-     */
-    private static boolean isSingleLineDefault(DetailAST literalDefault) {
-        boolean result = false;
-        final DetailAST slist = literalDefault.getNextSibling();
-        if (slist == null) {
-            result = true;
-        }
-        else {
-            final DetailAST block = slist.getFirstChild();
-            if (block != null && block.getType() != TokenTypes.SLIST) {
-                result = literalDefault.getLineNo() == block.getLineNo();
-            }
-        }
-        return result;
+    private static boolean isSingleLineSwitchMember(DetailAST ast) {
+        return Optional.of(ast)
+                .map(DetailAST::getNextSibling)
+                .map(DetailAST::getLastChild)
+                .map(lastToken -> isOnSameLine(ast, lastToken))
+                .orElse(true);
     }
 
     /**
@@ -468,7 +491,7 @@ public class NeedBracesCheck extends AbstractCheck {
      */
     private static boolean isSingleLineElse(DetailAST literalElse) {
         final DetailAST block = literalElse.getFirstChild();
-        return literalElse.getLineNo() == block.getLineNo();
+        return isOnSameLine(literalElse, block);
     }
 
 }

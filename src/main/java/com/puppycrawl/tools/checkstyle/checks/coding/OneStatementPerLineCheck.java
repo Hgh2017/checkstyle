@@ -44,8 +44,20 @@ import com.puppycrawl.tools.checkstyle.api.TokenTypes;
  * variable declaration statements, empty statements, import statements,
  * assignment statements, expression statements, increment statements,
  * object creation statements, 'for loop' statements, 'break' statements,
- * 'continue' statements, 'return' statements.
+ * 'continue' statements, 'return' statements, resources statements (optional).
  * </p>
+ * <ul>
+ * <li>
+ * Property {@code treatTryResourcesAsStatement} - Enable resources processing.
+ * Default value is {@code false}.
+ * </li>
+ * </ul>
+ * <p>
+ * An example of how to configure this Check:
+ * </p>
+ * <pre>
+ * &lt;module name=&quot;OneStatementPerLine&quot;/&gt;
+ * </pre>
  * <p>
  * The following examples will be flagged as a violation:
  * </p>
@@ -66,10 +78,33 @@ import com.puppycrawl.tools.checkstyle.api.TokenTypes;
  * r = 5; int t; //violation here
  * </pre>
  * <p>
- * An example of how to configure this Check:
+ * An example of how to configure the check to treat resources
+ * in a try statement as statements to require them on their own line:
  * </p>
  * <pre>
- * &lt;module name=&quot;OneStatementPerLine&quot;/&gt;
+ * &lt;module name=&quot;OneStatementPerLine&quot;&gt;
+ *   &lt;property name=&quot;treatTryResourcesAsStatement&quot; value=&quot;true&quot;/&gt;
+ * &lt;/module&gt;
+ * </pre>
+ * <p>
+ * Note: resource declarations can contain variable definitions
+ * and variable references (from java9).
+ * When property "treatTryResourcesAsStatement" is enabled,
+ * this check is only applied to variable definitions.
+ * If there are one or more variable references
+ * and one variable definition on the same line in resources declaration,
+ * there is no violation.
+ * The following examples will illustrate difference:
+ * </p>
+ * <pre>
+ * OutputStream s1 = new PipedOutputStream();
+ * OutputStream s2 = new PipedOutputStream();
+ * // only one statement(variable definition) with two variable references
+ * try (s1; s2; OutputStream s3 = new PipedOutputStream();) // OK
+ * {}
+ * // two statements with variable definitions
+ * try (Reader r = new PipedReader(); s2; Reader s3 = new PipedReader() // violation
+ * ) {}
  * </pre>
  *
  * @since 5.3
@@ -113,6 +148,24 @@ public final class OneStatementPerLineCheck extends AbstractCheck {
      */
     private int lambdaStatementEnd = -1;
 
+    /**
+     * Hold the line-number where the last resource variable statement ended.
+     */
+    private int lastVariableResourceStatementEnd = -1;
+
+    /**
+     * Enable resources processing.
+     */
+    private boolean treatTryResourcesAsStatement;
+
+    /**
+     * Setter to enable resources processing.
+     * @param treatTryResourcesAsStatement user's value of treatTryResourcesAsStatement.
+     */
+    public void setTreatTryResourcesAsStatement(boolean treatTryResourcesAsStatement) {
+        this.treatTryResourcesAsStatement = treatTryResourcesAsStatement;
+    }
+
     @Override
     public int[] getDefaultTokens() {
         return getRequiredTokens();
@@ -139,6 +192,7 @@ public final class OneStatementPerLineCheck extends AbstractCheck {
         lastStatementEnd = -1;
         forStatementEnd = -1;
         isInLambda = false;
+        lastVariableResourceStatementEnd = -1;
     }
 
     @Override
@@ -196,19 +250,45 @@ public final class OneStatementPerLineCheck extends AbstractCheck {
             currentStatement = ast.getPreviousSibling();
         }
         if (isInLambda) {
-            int countOfSemiInCurrentLambda = countOfSemiInLambda.pop();
-            countOfSemiInCurrentLambda++;
-            countOfSemiInLambda.push(countOfSemiInCurrentLambda);
-            if (!inForHeader && countOfSemiInCurrentLambda > 1
-                    && isOnTheSameLine(currentStatement,
-                    lastStatementEnd, forStatementEnd,
-                    lambdaStatementEnd)) {
-                log(ast, MSG_KEY);
-            }
+            checkLambda(ast, currentStatement);
+        }
+        else if (isResource(ast.getParent())) {
+            checkResourceVariable(ast);
         }
         else if (!inForHeader && isOnTheSameLine(currentStatement, lastStatementEnd,
                 forStatementEnd, lambdaStatementEnd)) {
             log(ast, MSG_KEY);
+        }
+    }
+
+    private void checkLambda(DetailAST ast, DetailAST currentStatement) {
+        int countOfSemiInCurrentLambda = countOfSemiInLambda.pop();
+        countOfSemiInCurrentLambda++;
+        countOfSemiInLambda.push(countOfSemiInCurrentLambda);
+        if (!inForHeader && countOfSemiInCurrentLambda > 1
+                && isOnTheSameLine(currentStatement,
+                lastStatementEnd, forStatementEnd,
+                lambdaStatementEnd)) {
+            log(ast, MSG_KEY);
+        }
+    }
+
+    private static boolean isResource(DetailAST ast) {
+        return ast != null
+            && (ast.getType() == TokenTypes.RESOURCES
+                 || ast.getType() == TokenTypes.RESOURCE_SPECIFICATION);
+    }
+
+    private void checkResourceVariable(DetailAST currentStatement) {
+        if (treatTryResourcesAsStatement) {
+            final DetailAST nextNode = currentStatement.getNextSibling();
+            if (currentStatement.getPreviousSibling().findFirstToken(TokenTypes.ASSIGN) != null) {
+                lastVariableResourceStatementEnd = currentStatement.getLineNo();
+            }
+            if (nextNode.findFirstToken(TokenTypes.ASSIGN) != null
+                && nextNode.getLineNo() == lastVariableResourceStatementEnd) {
+                log(currentStatement, MSG_KEY);
+            }
         }
     }
 

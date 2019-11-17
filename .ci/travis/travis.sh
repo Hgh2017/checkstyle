@@ -39,12 +39,12 @@ test-fr)
 
 test-zh)
   mvn -e clean integration-test failsafe:verify \
-    -DargLine='-Duser.language=zh -Duser.country=ZH -Xms1024m -Xmx2048m'
+    -DargLine='-Duser.language=zh -Duser.country=CN -Xms1024m -Xmx2048m'
   ;;
 
-test-jp)
+test-ja)
   mvn -e clean integration-test failsafe:verify \
-    -DargLine='-Duser.language=jp -Duser.country=JP -Xms1024m -Xmx2048m'
+    -DargLine='-Duser.language=ja -Duser.country=JP -Xms1024m -Xmx2048m'
   ;;
 
 test-pt)
@@ -57,8 +57,26 @@ test-tr)
     -DargLine='-Duser.language=tr -Duser.country=TR -Xms1024m -Xmx2048m'
   ;;
 
-travis-osx)
-  mvn -e package -Dlinkcheck.skip=true
+osx-assembly)
+  export JAVA_HOME=$(/usr/libexec/java_home)
+  mvn -e package -Passembly
+  ;;
+
+osx-package)
+  export JAVA_HOME=$(/usr/libexec/java_home)
+  mvn -e package
+  ;;
+
+osx-jdk12-package)
+  exclude1="!FileContentsTest#testGetJavadocBefore,"
+  exclude2="!MainFrameModelPowerTest#testOpenFileWithUnknownParseMode,"
+  exclude3="!TokenUtilTest#testTokenValueIncorrect2,"
+  exclude4="!ImportControlLoaderPowerTest#testInputStreamThatFailsOnClose"
+  export JAVA_HOME=$(/usr/libexec/java_home)
+  mvn -e package -Dtest=*,${exclude1}${exclude2}${exclude3}${exclude4}
+  ;;
+
+osx-jdk12-assembly)
   mvn -e package -Passembly
   ;;
 
@@ -87,15 +105,14 @@ javac8)
   done
   ;;
 
-jdk12)
-  # powermock doesn't support modifying final fields in JDK12
-  exclude1="\!FileContentsTest#testGetJavadocBefore,\!FileTextTest#testFindLine*,"
-  exclude2="\!MainFrameModelPowerTest#testOpenFileWithUnknownParseMode,"
-  exclude3="\!TokenUtilTest#testTokenValueIncorrect2,"
-  exclude4="\!ImportControlLoaderPowerTest#testInputStreamThatFailsOnClose"
+jdk12-assembly-site)
+  mvn -e package -Passembly
+  mvn -e site -Pno-validations
+  ;;
 
-  mvn -e package -Passembly -Dtest=$exclude1$exclude2$exclude3$exclude4
-  mvn -e site -Dlinkcheck.skip=true
+jdk12-verify-limited)
+  # we skip pmd and spotbugs as they executed in special Travis build
+  mvn -e verify -Dpmd.skip=true -Dspotbugs.skip=true
   ;;
 
 nondex)
@@ -108,7 +125,7 @@ nondex)
   ;;
 
 versions)
-  if [[ -v TRAVIS_EVENT_TYPE && $TRAVIS_EVENT_TYPE != "cron" ]]; then exit 0; fi
+  if [ -v TRAVIS_EVENT_TYPE ] && [ $TRAVIS_EVENT_TYPE != "cron" ] ; then exit 0; fi
   mvn -e clean versions:dependency-updates-report versions:plugin-updates-report
   if [ $(grep "<nextVersion>" target/*-updates-report.xml | cat | wc -l) -gt 0 ]; then
     echo "Version reports (dependency-updates-report.xml):"
@@ -143,7 +160,7 @@ assembly-run-all-jar)
 sonarqube)
   # token could be generated at https://sonarcloud.io/account/security/
   # executon on local: SONAR_TOKEN=xxxxxxxxxx ./.ci/travis/travis.sh sonarqube
-  if [[ -v TRAVIS_PULL_REQUEST && $TRAVIS_PULL_REQUEST && $TRAVIS_PULL_REQUEST =~ ^([0-9]*)$ ]];
+  if [ -v TRAVIS_PULL_REQUEST ] && [[ $TRAVIS_PULL_REQUEST && $TRAVIS_PULL_REQUEST =~ ^([0-9]*)$ ]];
     then
       exit 0;
   fi
@@ -172,6 +189,30 @@ pr-description)
   .ci/travis/xtr_pr-description.sh
   ;;
 
+pr-age)
+  ## Travis merges the PR commit into origin/master
+  ## This command undoes that to work with the original branch
+  ## if it notices a merge commit
+  if git show --summary HEAD | grep ^Merge: ;
+  then
+    git reset --hard `git log -n 1 --no-merges --pretty=format:"%h"`
+  fi
+
+  PR_MASTER=`git merge-base origin/master HEAD`
+  COMMITS_SINCE_MASTER=`git rev-list --count $PR_MASTER..origin/master`
+  MAX_ALLOWED=10
+
+  echo "The PR is based on a master that is $COMMITS_SINCE_MASTER commit(s) old."
+  echo "The max allowed is $MAX_ALLOWED."
+
+  if (( $COMMITS_SINCE_MASTER > $MAX_ALLOWED ));
+  then
+    echo "This PR is too old and should be rebased on origin/master."
+    sleep 5s
+    false
+  fi
+  ;;
+
 check-chmod)
   .ci/travis/checkchmod.sh
   ;;
@@ -185,6 +226,8 @@ all-sevntu-checks)
     | grep "<li>" | cut -d '>' -f 3 | sed "s/<\/a//" \
     | grep -E "Check$" \
     | sort | uniq | sed "s/Check$//" > web.txt
+  # temporal ignore list
+  # sed -i.backup '/Jsr305Annotations/d' web.txt
   diff -u web.txt file.txt
   ;;
 
@@ -200,7 +243,7 @@ no-error-test-sbe)
   sed -i'' \
     "s/'com.puppycrawl.tools:checkstyle:.*'/'com.puppycrawl.tools:checkstyle:$CS_POM_VERSION'/" \
     build.gradle
-  ./gradlew build
+  ./gradlew build --stacktrace
   ;;
 
 no-exception-test-checkstyle-sevntu-checkstyle)
@@ -251,6 +294,23 @@ no-exception-test-guava-with-google-checks)
   export MAVEN_OPTS="-Xmx2048m"
   groovy ./launch.groovy --listOfProjects projects-to-test-on.properties \
       --config ../../src/main/resources/google_checks.xml --checkstyleVersion $CS_POM_VERSION
+  ;;
+
+no-exception-test-guava-with-sun-checks)
+  CS_POM_VERSION=$(mvn -e -q -Dexec.executable='echo' -Dexec.args='${project.version}' \
+                     --non-recursive org.codehaus.mojo:exec-maven-plugin:1.3.1:exec)
+  echo CS_version: $CS_POM_VERSION
+  git clone https://github.com/checkstyle/contribution
+  cd contribution/checkstyle-tester
+  sed -i.'' 's/^guava/#guava/' projects-to-test-on.properties
+  sed -i.'' 's/#guava|/guava|/' projects-to-test-on.properties
+  cd ../../
+  mvn -e clean install -Pno-validations
+  sed -i.'' 's/value=\"error\"/value=\"ignore\"/' src/main/resources/sun_checks.xml
+  cd contribution/checkstyle-tester
+  export MAVEN_OPTS="-Xmx2048m"
+  groovy ./launch.groovy --listOfProjects projects-to-test-on.properties \
+      --config ../../src/main/resources/sun_checks.xml --checkstyleVersion $CS_POM_VERSION
   ;;
 
 no-exception-test-hibernate)
@@ -411,6 +471,14 @@ verify-no-exception-configs)
     | grep -vE $MODULES_WITH_EXTERNAL_FILES | grep -v "^$" \
     | sort | uniq | sed "s/Check$//" > file.txt
   diff -u web.txt file.txt
+  ;;
+
+git-status)
+  if [ $(git status | grep "Changes not staged for commit" | wc -l) -gt 0 ]; then
+    echo "There are changes in files after clone, recheck .gitattributes file"
+    sleep 5s
+    false
+  fi
   ;;
 
 *)

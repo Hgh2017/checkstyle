@@ -173,8 +173,7 @@ public class AllChecksTest extends AbstractModuleTestSupport {
         GOOGLE_TOKENS_IN_CONFIG_TO_IGNORE.put("AnnotationLocation", Stream.of(
                 // state of the configuration when test was made until reason found in
                 // https://github.com/checkstyle/checkstyle/issues/3730
-                "ANNOTATION_DEF", "ANNOTATION_FIELD_DEF", "ENUM_CONSTANT_DEF", "PACKAGE_DEF",
-                "PARAMETER_DEF")
+                "ANNOTATION_DEF", "ANNOTATION_FIELD_DEF", "ENUM_CONSTANT_DEF", "PACKAGE_DEF")
                 .collect(Collectors.toSet()));
         GOOGLE_TOKENS_IN_CONFIG_TO_IGNORE.put("AbbreviationAsWordInName", Stream.of(
                 // enum values should be uppercase
@@ -254,14 +253,13 @@ public class AllChecksTest extends AbstractModuleTestSupport {
             }
 
             final DefaultConfiguration moduleConfig = createModuleConfig(module);
-            final Checker checker;
             if (module.equals(ImportControlCheck.class)) {
                 // ImportControlCheck must have the import control configuration file to avoid
                 // violation.
                 moduleConfig.addAttribute("file", getPath(
                         "InputAllChecksImportControl.xml"));
             }
-            checker = createChecker(moduleConfig);
+            final Checker checker = createChecker(moduleConfig);
             verify(checker, inputFilePath, expected);
         }
     }
@@ -532,7 +530,8 @@ public class AllChecksTest extends AbstractModuleTestSupport {
             try {
                 result = CheckUtil.getCheckMessage(module, locale, messageString);
             }
-            catch (IllegalArgumentException ex) {
+            // -@cs[IllegalCatch] There is no other way to deliver filename that was used
+            catch (Exception ex) {
                 Assert.fail(module.getSimpleName() + " with the message '" + messageString
                         + "' in locale '" + locale.getLanguage() + "' failed with: "
                         + ex.getClass().getSimpleName() + " - " + ex.getMessage());

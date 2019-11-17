@@ -217,35 +217,12 @@ public class AbstractCheckTest extends AbstractModuleTestSupport {
             }
         };
         final String[] lines = {"test"};
-        final FileContents fileContents = new FileContents("fileName", lines);
+        final FileContents fileContents = new FileContents(
+                new FileText(new File("filename"), Arrays.asList(lines)));
         check.setFileContents(fileContents);
 
         assertSame("Invalid file contents", fileContents, check.getFileContents());
         assertArrayEquals("Invalid lines", lines, check.getLines());
-    }
-
-    @Test
-    public void testGetClassLoader() {
-        final AbstractCheck check = new AbstractCheck() {
-            @Override
-            public int[] getDefaultTokens() {
-                return CommonUtil.EMPTY_INT_ARRAY;
-            }
-
-            @Override
-            public int[] getAcceptableTokens() {
-                return getDefaultTokens();
-            }
-
-            @Override
-            public int[] getRequiredTokens() {
-                return getDefaultTokens();
-            }
-        };
-        final ClassLoader classLoader = ClassLoader.getSystemClassLoader();
-        check.setClassLoader(classLoader);
-
-        assertEquals("Invalid classloader", classLoader, check.getClassLoader());
     }
 
     @Test
@@ -324,7 +301,7 @@ public class AbstractCheckTest extends AbstractModuleTestSupport {
         check.setFileContents(new FileContents(theText));
         check.clearMessages();
 
-        final DetailAST ast = new DetailAstImpl();
+        final DetailAstImpl ast = new DetailAstImpl();
         ast.setLineNo(1);
         ast.setColumnNo(4);
         check.visitToken(ast);

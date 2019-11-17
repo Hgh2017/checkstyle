@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Filter;
@@ -36,6 +37,7 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -48,6 +50,7 @@ import com.puppycrawl.tools.checkstyle.api.Configuration;
 import com.puppycrawl.tools.checkstyle.api.LocalizedMessage;
 import com.puppycrawl.tools.checkstyle.api.RootModule;
 import com.puppycrawl.tools.checkstyle.utils.CommonUtil;
+import com.puppycrawl.tools.checkstyle.utils.XpathUtil;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -85,8 +88,10 @@ public final class Main {
     /** Exit code returned when execution finishes with {@link CheckstyleException}. */
     private static final int EXIT_WITH_CHECKSTYLE_EXCEPTION_CODE = -2;
 
-    /** Client code should not create instances of this class, but use
-     * {@link #main(String[])} method instead. */
+    /**
+     * Client code should not create instances of this class, but use
+     * {@link #main(String[])} method instead.
+     */
     private Main() {
     }
 
@@ -137,7 +142,9 @@ public final class Main {
                 final LocalizedMessage errorCounterMessage = new LocalizedMessage(1,
                         Definitions.CHECKSTYLE_BUNDLE, ERROR_COUNTER,
                         new String[] {String.valueOf(errorCounter)}, null, Main.class, null);
-                System.out.println(errorCounterMessage.getMessage());
+                // print error count statistic to error output stream,
+                // output stream might be used by validation report content
+                System.err.println(errorCounterMessage.getMessage());
             }
             if (exitStatus != 0) {
                 System.exit(exitStatus);
@@ -273,6 +280,10 @@ public final class Main {
                     JavaParser.Options.WITHOUT_COMMENTS);
             System.out.print(stringAst);
         }
+        else if (Objects.nonNull(options.xpath)) {
+            final String branch = XpathUtil.printXpathBranch(options.xpath, filesToProcess.get(0));
+            System.out.print(branch);
+        }
         else if (options.printAstWithComments) {
             final File file = filesToProcess.get(0);
             final String stringAst = AstTreeStringPrinter.printFileAst(file,
@@ -327,7 +338,6 @@ public final class Main {
      *         when output file could not be found
      * @throws CheckstyleException
      *         when properties file could not be loaded
-     * @noinspection UseOfSystemOutOrSystemErr
      */
     private static int runCheckstyle(CliOptions options, List<File> filesToProcess)
             throws CheckstyleException, IOException {
@@ -377,7 +387,7 @@ public final class Main {
                     ((DefaultConfiguration) treeWalkerConfig).addChild(moduleConfig);
                 }
 
-                listener = new XpathFileGeneratorAuditListener(System.out,
+                listener = new XpathFileGeneratorAuditListener(getOutputStream(options.outputPath),
                         AutomaticBean.OutputStreamOptions.NONE);
             }
             else {
@@ -510,7 +520,9 @@ public final class Main {
         return result;
     }
 
-    /** Enumeration over the possible output formats.
+    /**
+     * Enumeration over the possible output formats.
+     *
      * @noinspection PackageVisibleInnerClass
      */
     // Package-visible for tests.
@@ -538,7 +550,9 @@ public final class Main {
             return result;
         }
 
-        /** Returns the name in lowercase.
+        /**
+         * Returns the name in lowercase.
+         *
          * @return the enum name in lowercase
          */
         @Override
@@ -569,7 +583,7 @@ public final class Main {
      *              MismatchedQueryAndUpdateOfCollection, LocalCanBeFinal
      */
     @Command(name = "checkstyle", description = "Checkstyle verifies that the specified "
-            + "source code files adhere to the specified rules. By default errors are "
+            + "source code files adhere to the specified rules. By default violations are "
             + "reported to standard out in plain format. Checkstyle requires a configuration "
             + "XML file that configures the checks to apply.",
             mixinStandardHelpOptions = true)
@@ -613,22 +627,26 @@ public final class Main {
                         + "that the suppression should be generated for")
         private String suppressionLineColumnNumber;
 
-        /** Tab character length.
-         *  Suppression: CanBeFinal - we use picocli and it use  reflection to manage such fields
+        /**
+         * Tab character length.
+         * Suppression: CanBeFinal - we use picocli and it use  reflection to manage such fields
+         *
          * @noinspection CanBeFinal
          */
-        @Option(names = "--tabWidth", description = "Sets the length of the tab character. "
+        @Option(names = {"-w", "--tabWidth"}, description = "Sets the length of the tab character. "
                 + "Used only with \"-s\" option. Default value is ${DEFAULT-VALUE}")
         private int tabWidth = CommonUtil.DEFAULT_TAB_WIDTH;
 
         /** Switch whether to generate suppressions file or not. */
         @Option(names = {"-g", "--generate-xpath-suppression"},
-                description = "Generates to output a suppression.xml to use to suppress all"
+                description = "Generates to output a suppression xml to use to suppress all"
                         + " violations from user's config")
         private boolean generateXpathSuppressionsFile;
 
-        /** Output format.
-         *  Suppression: CanBeFinal - we use picocli and it use  reflection to manage such fields
+        /**
+         * Output format.
+         * Suppression: CanBeFinal - we use picocli and it use  reflection to manage such fields
+         *
          * @noinspection CanBeFinal
          */
         @Option(names = "-f", description = "Sets the output format. Valid values: "
@@ -660,16 +678,20 @@ public final class Main {
                 description = "Print all debug logging of CheckStyle utility")
         private boolean debug;
 
-        /** Option that allows users to specify a list of paths to exclude.
-         *  Suppression: CanBeFinal - we use picocli and it use  reflection to manage such fields
+        /**
+         * Option that allows users to specify a list of paths to exclude.
+         * Suppression: CanBeFinal - we use picocli and it use  reflection to manage such fields
+         *
          * @noinspection CanBeFinal
          */
         @Option(names = {"-e", "--exclude"},
                 description = "Directory/File path to exclude from CheckStyle")
         private List<File> exclude = new ArrayList<>();
 
-        /** Option that allows users to specify a regex of paths to exclude.
-         *  Suppression: CanBeFinal - we use picocli and it use  reflection to manage such fields
+        /**
+         * Option that allows users to specify a regex of paths to exclude.
+         * Suppression: CanBeFinal - we use picocli and it use  reflection to manage such fields
+         *
          * @noinspection CanBeFinal
          */
         @Option(names = {"-x", "--exclude-regexp"},
@@ -677,34 +699,45 @@ public final class Main {
         private List<Pattern> excludeRegex = new ArrayList<>();
 
         /** Switch whether to execute ignored modules or not. */
-        @Option(names = "--executeIgnoredModules",
+        @Option(names = {"-E", "--executeIgnoredModules"},
                 description = "Allows ignored modules to be run.")
         private boolean executeIgnoredModules;
 
-        /** The checker threads number.
-         *  Suppression: CanBeFinal - we use picocli and it use  reflection to manage such fields
+        /**
+         * The checker threads number.
+         * Suppression: CanBeFinal - we use picocli and it use  reflection to manage such fields
+         *
          * @noinspection CanBeFinal
          */
         @Option(names = {"-C", "--checker-threads-number"}, description = "(experimental) The "
                 + "number of Checker threads (must be greater than zero)")
         private int checkerThreadsNumber = DEFAULT_THREAD_COUNT;
 
-        /** The tree walker threads number.
-         *  Suppression: CanBeFinal - we use picocli and it use  reflection to manage such fields
+        /**
+         * The tree walker threads number.
+         * Suppression: CanBeFinal - we use picocli and it use  reflection to manage such fields
+         *
          * @noinspection CanBeFinal
          */
         @Option(names = {"-W", "--tree-walker-threads-number"}, description = "(experimental) The "
                 + "number of TreeWalker threads (must be greater than zero)")
         private int treeWalkerThreadsNumber = DEFAULT_THREAD_COUNT;
 
+        /** Show AST branches that match xpath. */
+        @Option(names = {"-b", "--branch-matching-xpath"},
+            description = "Show Abstract Syntax Tree(AST) branches that match XPath")
+        private String xpath;
+
         /**
          * Gets the list of exclusions provided through the command line arguments.
          * @return List of exclusion patterns.
          */
         private List<Pattern> getExclusions() {
-            final List<Pattern> result = new ArrayList<>();
-            exclude.forEach(file -> result.add(
-                    Pattern.compile("^" + Pattern.quote(file.getAbsolutePath()) + "$")));
+            final List<Pattern> result = exclude.stream()
+                    .map(File::getAbsolutePath)
+                    .map(Pattern::quote)
+                    .map(pattern -> Pattern.compile("^" + pattern + "$"))
+                    .collect(Collectors.toCollection(ArrayList::new));
             result.addAll(excludeRegex);
             return result;
         }
@@ -725,7 +758,8 @@ public final class Main {
                 result.add("Files to process must be specified, found 0.");
             }
             // ensure there is no conflicting options
-            else if (printAst || printAstWithComments || printJavadocTree || printTreeWithJavadoc) {
+            else if (printAst || printAstWithComments || printJavadocTree || printTreeWithJavadoc
+                || xpath != null) {
                 if (suppressionLineColumnNumber != null || configurationFile != null
                         || propertiesFile != null || outputPath != null
                         || parseResult.hasMatchedOption(OUTPUT_FORMAT_OPTION)) {

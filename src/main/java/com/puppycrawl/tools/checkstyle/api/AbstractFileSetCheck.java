@@ -44,7 +44,7 @@ public abstract class AbstractFileSetCheck
     /** The dispatcher errors are fired to. */
     private MessageDispatcher messageDispatcher;
 
-    /** The file extensions that are accepted by this filter. */
+    /** Specify the file type extension of files to process. */
     private String[] fileExtensions = CommonUtil.EMPTY_STRING_ARRAY;
 
     /** The tab width for column reporting. */
@@ -143,8 +143,8 @@ public abstract class AbstractFileSetCheck
     }
 
     /**
-     * Sets the file extensions that identify the files that pass the
-     * filter of this FileSetCheck.
+     * Setter to specify the file type extension of files to process.
+     *
      * @param extensions the set of file extensions. A missing
      *         initial '.' character of an extension is automatically added.
      * @throws IllegalArgumentException is argument is null
@@ -167,15 +167,15 @@ public abstract class AbstractFileSetCheck
     }
 
     /**
-     * Get tab width to report errors with.
-     * @return the tab width to report errors with
+     * Get tab width to report audit events with.
+     * @return the tab width to report audit events with
      */
     protected final int getTabWidth() {
         return tabWidth;
     }
 
     /**
-     * Set the tab width to report errors with.
+     * Set the tab width to report audit events with.
      * @param tabWidth an {@code int} value
      */
     public final void setTabWidth(int tabWidth) {

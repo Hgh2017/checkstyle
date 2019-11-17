@@ -19,7 +19,11 @@
 
 package com.puppycrawl.tools.checkstyle.ant;
 
+import static org.hamcrest.CoreMatchers.allOf;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
@@ -36,7 +40,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.tools.ant.AntClassLoader;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.types.FileSet;
@@ -51,7 +54,6 @@ import com.puppycrawl.tools.checkstyle.DefaultLogger;
 import com.puppycrawl.tools.checkstyle.Definitions;
 import com.puppycrawl.tools.checkstyle.XMLLogger;
 import com.puppycrawl.tools.checkstyle.api.LocalizedMessage;
-import com.puppycrawl.tools.checkstyle.internal.testmodules.CheckerStub;
 import com.puppycrawl.tools.checkstyle.internal.testmodules.TestRootModuleChecker;
 
 public class CheckstyleAntTaskTest extends AbstractPathTestSupport {
@@ -182,9 +184,9 @@ public class CheckstyleAntTaskTest extends AbstractPathTestSupport {
                 TestRootModuleChecker.isProcessed());
         final List<File> filesToCheck = TestRootModuleChecker.getFilesToCheck();
         assertThat("There are more files to check than expected",
-                filesToCheck.size(), is(9));
+                filesToCheck.size(), is(8));
         assertThat("The path of file differs from expected",
-                filesToCheck.get(6).getAbsolutePath(), is(getPath(FLAWLESS_INPUT)));
+                filesToCheck.get(5).getAbsolutePath(), is(getPath(FLAWLESS_INPUT)));
         assertEquals("Amount of logged messages in unexpected",
                 8, antTask.getLoggedMessages().size());
     }
@@ -378,9 +380,10 @@ public class CheckstyleAntTaskTest extends AbstractPathTestSupport {
         final List<String> output = FileUtils.readLines(outputFile, StandardCharsets.UTF_8);
         final String errorMessage = "Content of file with violations differs from expected";
         assertEquals(errorMessage, auditStartedMessage.getMessage(), output.get(0));
-        assertTrue(errorMessage, output.get(1).startsWith("[WARN]"));
-        assertTrue(errorMessage, output.get(1).endsWith("InputCheckstyleAntTaskError.java:4: "
-                + "@incomplete=Some javadoc [WriteTag]"));
+        assertThat(errorMessage, output.get(1), allOf(
+                startsWith("[WARN]"),
+                containsString("InputCheckstyleAntTaskError.java:4: "),
+                endsWith("@incomplete=Some javadoc [WriteTag]")));
         assertTrue(errorMessage, output.get(2).startsWith("[ERROR]"));
         assertTrue(errorMessage, output.get(2).endsWith("InputCheckstyleAntTaskError.java:7: "
                 + "Line is longer than 70 characters (found 80). [LineLength]"));
@@ -700,23 +703,6 @@ public class CheckstyleAntTaskTest extends AbstractPathTestSupport {
 
         assertTrue("Checker is not processed",
                 TestRootModuleChecker.isProcessed());
-    }
-
-    @Test
-    public void testClassloaderInRootModule() throws IOException {
-        TestRootModuleChecker.reset();
-        CheckerStub.reset();
-
-        final CheckstyleAntTask antTask =
-                getCheckstyleAntTask(
-                        "InputCheckstyleAntTaskConfigCustomCheckerRootModule.xml");
-        antTask.setFile(new File(getPath(VIOLATED_INPUT)));
-
-        antTask.execute();
-
-        final ClassLoader classLoader = CheckerStub.getClassLoader();
-        assertTrue("Classloader is not set or has invalid type",
-                classLoader instanceof AntClassLoader);
     }
 
     private static class CheckstyleAntTaskLogStub extends CheckstyleAntTask {

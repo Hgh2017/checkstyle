@@ -35,16 +35,19 @@ no-error-orekit)
   CS_POM_VERSION=$(mvn -e -q -Dexec.executable='echo' -Dexec.args='${project.version}' \
                      --non-recursive org.codehaus.mojo:exec-maven-plugin:1.3.1:exec)
   echo CS_version: ${CS_POM_VERSION}
+  checkout_from https://github.com/Hipparchus-Math/hipparchus.git
+  cd .ci-temp/hipparchus
+  # checkout to version that Orekit expects
+  SHA_HIPPARCHUS="4c6c6fc45e859e""ae2d4eb091a3a3c0a7a458b8d9"
+  git checkout $SHA_HIPPARCHUS
+  mvn install -DskipTests
+  cd -
   checkout_from https://github.com/CS-SI/Orekit.git
   cd .ci-temp/Orekit
   # no CI is enforced in project, so to make our build stable we should
-  # checkout to latest release (annotated tag)
-  #git checkout $(git describe --abbrev=0 --tags)
-  # Orekit use 'develop' branch as target for PullRequest merges, where all our breaking changes
-  # of 8.2 and above are applied
-  #git checkout develop
-  # due to temporal compilation problems(20180522) we use latest commit where compilation pass
-  git checkout 768201c
+  # checkout to latest release/development (annotated tag or hash)
+  # git checkout $(git describe --abbrev=0 --tags)
+  git checkout 973d1bd3e4532d2c1d3a7c28136e2713bd057542
   mvn -e compile checkstyle:check -Dorekit.checkstyle.version=${CS_POM_VERSION}
   cd ../
   rm -rf Orekit
@@ -131,7 +134,7 @@ no-error-sevntu-checks)
   checkout_from https://github.com/sevntu-checkstyle/sevntu.checkstyle.git
   cd .ci-temp/sevntu.checkstyle/sevntu-checks
   mvn -e -Pno-validations verify  -Dcheckstyle.skip=false -Dcheckstyle.version=${CS_POM_VERSION} \
-     -Dcheckstyle.configLocation=../../config/checkstyle_checks.xml
+     -Dcheckstyle.configLocation=../../../config/checkstyle_checks.xml
   cd ../../
   rm -rf sevntu.checkstyle
   ;;
@@ -171,7 +174,7 @@ no-exception-checkstyle-sevntu)
   checkout_from https://github.com/checkstyle/contribution.git
   cd .ci-temp/contribution/checkstyle-tester
   sed -i'' 's/^guava/#guava/' projects-for-wercker.properties
-  sed -i'' 's/#checkstyle/checkstyle/' projects-for-wercker.properties
+  sed -i'' 's/#local-checkstyle/local-checkstyle/' projects-for-wercker.properties
   sed -i'' 's/#sevntu-checkstyle/sevntu-checkstyle/' projects-for-wercker.properties
   groovy ./launch.groovy --listOfProjects projects-for-wercker.properties \
       --config checks-nonjavadoc-error.xml --checkstyleVersion ${CS_POM_VERSION}
@@ -299,7 +302,7 @@ no-warning-imports-guava)
   cd ../../
   rm -rf contribution
   if [ -z "$RESULT" ]; then
-    echo "Inpection did not find any warnings"
+    echo "Inspection did not find any warnings"
   else
     echo "$RESULT"
     echo "Some warnings have been found. Verification failed."
@@ -323,7 +326,7 @@ no-warning-imports-java-design-patterns)
   cd ../../
   rm -rf contribution
   if [ -z "$RESULT" ]; then
-    echo "Inpection did not find any warnings"
+    echo "Inspection did not find any warnings"
   else
     echo "$RESULT"
     echo "Some warnings have been found. Verification failed."

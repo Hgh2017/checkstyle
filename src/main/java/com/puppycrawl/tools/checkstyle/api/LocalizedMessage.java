@@ -81,7 +81,9 @@ public final class LocalizedMessage
     /** Key for the message format. **/
     private final String key;
 
-    /** Arguments for MessageFormat.
+    /**
+     * Arguments for MessageFormat.
+     *
      * @noinspection NonSerializableFieldInSerializableClass
      */
     private final Object[] args;
@@ -264,7 +266,7 @@ public final class LocalizedMessage
      * defaults to 0.
      *
      * @param lineNo line number associated with the message
-     * @param bundle name of a resource bundle that contains error messages
+     * @param bundle name of a resource bundle that contains audit event messages
      * @param key the key to locate the translation
      * @param args arguments for the translation
      * @param moduleId the id of the module the message is associated with
@@ -342,7 +344,7 @@ public final class LocalizedMessage
             }
             catch (final MissingResourceException ignored) {
                 // If the Check author didn't provide i18n resource bundles
-                // and logs error messages directly, this will return
+                // and logs audit event messages directly, this will return
                 // the author's original message
                 final MessageFormat formatter = new MessageFormat(key, Locale.ROOT);
                 message = formatter.format(args);
@@ -373,8 +375,10 @@ public final class LocalizedMessage
      * @return a ResourceBundle
      */
     private ResourceBundle getBundle(String bundleName) {
-        return BUNDLE_CACHE.computeIfAbsent(bundleName, name -> ResourceBundle.getBundle(
-                name, sLocale, sourceClass.getClassLoader(), new Utf8Control()));
+        return BUNDLE_CACHE.computeIfAbsent(bundleName, name -> {
+            return ResourceBundle.getBundle(
+                name, sLocale, sourceClass.getClassLoader(), new Utf8Control());
+        });
     }
 
     /**
@@ -427,7 +431,7 @@ public final class LocalizedMessage
 
     /**
      * Returns the message key to locate the translation, can also be used
-     * in IDE plugins to map error messages to corrective actions.
+     * in IDE plugins to map audit event messages to corrective actions.
      *
      * @return the message key
      */

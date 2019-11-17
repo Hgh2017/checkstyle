@@ -27,6 +27,7 @@ import com.puppycrawl.tools.checkstyle.FileStatefulCheck;
 import com.puppycrawl.tools.checkstyle.api.AbstractCheck;
 import com.puppycrawl.tools.checkstyle.api.DetailAST;
 import com.puppycrawl.tools.checkstyle.api.TokenTypes;
+import com.puppycrawl.tools.checkstyle.utils.CheckUtil;
 
 /**
  * <p>
@@ -232,8 +233,7 @@ public class EqualsAvoidNullCheck extends AbstractCheck {
         final FieldFrame frame = new FieldFrame(currentFrame);
         final int astType = ast.getType();
         if (astType == TokenTypes.CLASS_DEF
-                || astType == TokenTypes.ENUM_DEF
-                || astType == TokenTypes.ENUM_CONSTANT_DEF) {
+                || astType == TokenTypes.ENUM_DEF) {
             frame.setClassOrEnumOrEnumConstDef(true);
             frame.setFrameName(ast.findFirstToken(TokenTypes.IDENT).getText());
         }
@@ -287,9 +287,8 @@ public class EqualsAvoidNullCheck extends AbstractCheck {
      */
     private void traverseFieldFrameTree(FieldFrame frame) {
         for (FieldFrame child: frame.getChildren()) {
-            if (!child.getChildren().isEmpty()) {
-                traverseFieldFrameTree(child);
-            }
+            traverseFieldFrameTree(child);
+
             currentFrame = child;
             child.getMethodCalls().forEach(this::checkMethodCall);
         }
@@ -349,10 +348,11 @@ public class EqualsAvoidNullCheck extends AbstractCheck {
                 child = child.getNextSibling();
             }
         }
+        else {
+            argIsNotNull = arg.getType() == TokenTypes.STRING_LITERAL;
+        }
 
-        return argIsNotNull
-                || !arg.branchContains(TokenTypes.IDENT)
-                    && !arg.branchContains(TokenTypes.LITERAL_NULL);
+        return argIsNotNull;
     }
 
     /**
@@ -362,9 +362,11 @@ public class EqualsAvoidNullCheck extends AbstractCheck {
      */
     private static DetailAST skipVariableAssign(final DetailAST currentAST) {
         DetailAST result = currentAST;
-        if (currentAST.getType() == TokenTypes.ASSIGN
-                && currentAST.getFirstChild().getType() == TokenTypes.IDENT) {
-            result = currentAST.getFirstChild().getNextSibling();
+        while (result.getType() == TokenTypes.LPAREN) {
+            result = result.getNextSibling();
+        }
+        if (result.getType() == TokenTypes.ASSIGN) {
+            result = result.getFirstChild().getNextSibling();
         }
         return result;
     }
@@ -420,13 +422,9 @@ public class EqualsAvoidNullCheck extends AbstractCheck {
      * @return true if the field or the variable from THIS instance is of String type.
      */
     private boolean isStringFieldOrVariableFromThisInstance(DetailAST objCalledOn) {
-        boolean result = false;
         final String name = objCalledOn.getText();
         final DetailAST field = getObjectFrame(currentFrame).findField(name);
-        if (field != null) {
-            result = STRING.equals(getFieldType(field));
-        }
-        return result;
+        return STRING.equals(getFieldType(field));
     }
 
     /**
@@ -443,9 +441,7 @@ public class EqualsAvoidNullCheck extends AbstractCheck {
         while (frame != null) {
             if (className.equals(frame.getFrameName())) {
                 final DetailAST field = frame.findField(name);
-                if (field != null) {
-                    result = STRING.equals(getFieldType(field));
-                }
+                result = STRING.equals(getFieldType(field));
                 break;
             }
             frame = getObjectFrame(frame.getParent());
@@ -475,18 +471,7 @@ public class EqualsAvoidNullCheck extends AbstractCheck {
      */
     private static boolean checkLineNo(DetailAST field, DetailAST objCalledOn) {
         boolean result = false;
-        // Required for pitest coverage. We should specify columnNo passing condition
-        // in such a way, so that the minimal possible distance between field and
-        // objCalledOn will be the maximal condition to pass this check.
-        // The minimal distance between objCalledOn and field (of type String) initialization
-        // is calculated as follows:
-        // String(6) + space(1) + variableName(1) + assign(1) +
-        // anotherStringVariableName(1) + semicolon(1) = 11
-        // Example: length of "String s=d;" is 11 symbols.
-        final int minimumSymbolsBetween = 11;
-        if (field.getLineNo() < objCalledOn.getLineNo()
-                || field.getLineNo() == objCalledOn.getLineNo()
-                    && field.getColumnNo() + minimumSymbolsBetween <= objCalledOn.getColumnNo()) {
+        if (CheckUtil.isBeforeInSource(field, objCalledOn)) {
             result = true;
         }
         return result;
